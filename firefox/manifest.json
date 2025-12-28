@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Roblox Recommendation Blocker",
+  "version": "1.0.0",
+  "description": "Block games from appearing in your Recommended For You section on Roblox",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "roblox-recommendation-blocker@mireyacs",
+      "strict_min_version": "109.0"
+    }
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.roblox.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

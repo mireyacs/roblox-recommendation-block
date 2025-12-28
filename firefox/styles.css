@@ -1,0 +1,42 @@
+/* Roblox Recommendation Blocker Styles */
+
+.roblox-blocker-button {
+  background: transparent;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 6px;
+  margin-left: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.roblox-blocker-button:hover {
+  background: rgba(255, 0, 0, 0.1);
+  color: #ff4444;
+  transform: scale(1.1);
+}
+
+.roblox-blocker-button:active {
+  transform: scale(0.95);
+}
+
+.roblox-blocker-title-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+
