@@ -168,10 +168,12 @@ graph LR
 
 ### Extension Popup
 ![Popup Interface](popup.png)
+
 *Control panel with toggle switches and blocked games counter*
 
 ### Game Cards with Icons
 ![Game Cards](game-cards.png)
+
 *Prohibit icons appear next to game titles and ratings*
 
 </div>
