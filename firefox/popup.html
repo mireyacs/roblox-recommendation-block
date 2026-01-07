@@ -3,12 +3,97 @@
 <head>
   <meta charset="UTF-8">
   <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    
+    body.dark-mode ::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+    
+    body.dark-mode ::-webkit-scrollbar-thumb {
+      background: #555;
+    }
+    
+    body.dark-mode ::-webkit-scrollbar-thumb:hover {
+      background: #777;
+    }
+    
+    /* Firefox scrollbar */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #888 #f1f1f1;
+    }
+    
+    body.dark-mode,
+    body.dark-mode * {
+      scrollbar-color: #555 #1a1a1a;
+    }
+    
     body {
       width: 300px;
       padding: 16px;
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       font-size: 14px;
+      background: white;
+      color: #333;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    
+    body.dark-mode {
+      background: #1e1e1e;
+      color: #e0e0e0;
+    }
+    
+    body.dark-mode .toggle-container {
+      background: #2d2d2d;
+    }
+    
+    body.dark-mode .toggle-label span {
+      color: #999;
+    }
+    
+    body.dark-mode .stats {
+      background: #2d4d2d;
+      color: #81c784;
+    }
+    
+    body.dark-mode .modal {
+      background: #2d2d2d;
+      color: #e0e0e0;
+    }
+    
+    body.dark-mode .modal-content {
+      color: #e0e0e0;
+    }
+    
+    body.dark-mode .game-card {
+      background: #2d2d2d;
+    }
+    
+    body.dark-mode .game-card:hover {
+      background: #3d3d3d;
+    }
+    
+    body.dark-mode .game-card-id {
+      color: #999;
     }
     
     .header {
@@ -107,6 +192,98 @@
     
     .stats strong {
       font-weight: 600;
+    }
+    
+    .action-button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      background: #4CAF50;
+      color: white;
+    }
+    
+    .action-button:hover {
+      background: #45a049;
+    }
+    
+    .action-button-secondary {
+      background: #2196F3;
+    }
+    
+    .action-button-secondary:hover {
+      background: #1976D2;
+    }
+    
+    .game-card {
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease, opacity 0.3s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .game-card:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      transform: translateY(-2px);
+    }
+    
+    .game-card-info {
+      padding: 16px;
+    }
+    
+    .game-card-id {
+      font-size: 12px;
+      color: #666;
+      font-family: monospace;
+    }
+    
+    .game-card-remove {
+      width: 100%;
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      border-top: 1px solid #e0e0e0;
+    }
+    
+    .game-card-remove:hover {
+      background: #d32f2f;
+    }
+    
+    body.dark-mode .game-card {
+      background: #2d2d2d;
+      border-color: #444;
+    }
+    
+    body.dark-mode .game-card:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    
+    body.dark-mode .game-card-remove {
+      border-top-color: #444;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+    
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
     }
     
     /* Modal styles */
@@ -252,6 +429,64 @@
   
   <div class="stats" id="stats">
     <strong id="blockedCount">0</strong> games blocked
+  </div>
+  
+  <div style="margin-top: 12px; display: flex; gap: 8px; flex-direction: column;">
+    <button id="viewBlockedBtn" class="action-button" style="width: 100%;">
+      📋 View Blocked Games
+    </button>
+    <button id="exportBtn" class="action-button action-button-secondary" style="width: 100%;">
+      💾 Export Blocklist
+    </button>
+    <button id="importBtn" class="action-button action-button-secondary" style="width: 100%;">
+      📥 Import Blocklist
+    </button>
+    <button id="settingsBtn" class="action-button action-button-secondary" style="width: 100%;">
+      ⚙️ Settings
+    </button>
+  </div>
+  
+  <!-- Blocked Games Browser Modal -->
+  <div class="modal-overlay" id="blockedGamesModal">
+    <div class="modal" style="max-width: 500px; max-height: 80vh;">
+      <div class="modal-header">
+        <h3>📋 Blocked Games</h3>
+      </div>
+      <div class="modal-content" id="blockedGamesList" style="max-height: 60vh; overflow-y: auto;">
+        <p style="text-align: center; color: #999;">Loading...</p>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-button modal-button-cancel" id="closeBlockedModal">Close</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Import Modal -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📥 Import Blocklist</h3>
+      </div>
+      <div class="modal-content">
+        <p>You have <strong id="existingBlockCount">0</strong> games currently blocked.</p>
+        <p>How would you like to handle the imported games?</p>
+        <div style="margin: 16px 0;">
+          <label style="display: flex; align-items: center; margin-bottom: 12px; cursor: pointer;">
+            <input type="radio" name="importMode" value="replace" checked style="margin-right: 8px;">
+            <span><strong>Replace</strong> - Remove all current blocks and use imported list</span>
+          </label>
+          <label style="display: flex; align-items: center; cursor: pointer;">
+            <input type="radio" name="importMode" value="merge" style="margin-right: 8px;">
+            <span><strong>Merge</strong> - Combine with existing blocks</span>
+          </label>
+        </div>
+        <input type="file" id="importFileInput" accept=".json" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-top: 12px;">
+      </div>
+      <div class="modal-actions">
+        <button class="modal-button modal-button-cancel" id="cancelImport">Cancel</button>
+        <button class="modal-button modal-button-confirm" id="confirmImport" disabled>Import</button>
+      </div>
+    </div>
   </div>
   
   <!-- Modal for Continue Section Confirmation -->

@@ -4,20 +4,74 @@
 (function() {
   'use strict';
 
-  // Use browser API for Firefox compatibility
-  const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
-
   const STORAGE_KEY = 'blockedGameIds';
+  const STORAGE_V2_KEY = 'blockedGames'; // New format: array of {placeId, name, universeId}
   const TOGGLE_KEY = 'showBlockIcons';
   const CONTINUE_SECTION_KEY = 'enableContinueSection';
-  const DEBUG = false; // Set to false to disable console logs
-  let blockedGameIds = new Set();
+  const DEBUG = true; // Set to false to disable console logs
+  let blockedGameIds = new Set(); // For backward compatibility
+  let blockedGames = new Map(); // New format: placeId -> {placeId, name, universeId}
   let showIcons = true; // Default to showing icons
   let enableContinueSection = false; // Default to disabled
 
   function log(...args) {
     if (DEBUG) {
       console.log('[Roblox Blocker]', ...args);
+    }
+  }
+  
+  // Use browser API for Firefox compatibility
+  const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+  
+  // Proxy fetch through background script to avoid CORS issues
+  async function proxyFetch(url, options = {}) {
+    try {
+      const response = await browserAPI.runtime.sendMessage({
+        action: 'proxyFetch',
+        url: url,
+        method: options.method || 'GET',
+        headers: options.headers || {},
+        body: options.body || null
+      });
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Proxy fetch failed');
+      }
+      
+      // Parse JSON if content-type is JSON
+      const data = response.data;
+      let parsedData = data.text;
+      
+      try {
+        const contentType = data.headers['content-type'] || '';
+        if (contentType.includes('application/json')) {
+          parsedData = JSON.parse(data.text);
+        }
+      } catch (e) {
+        // Not JSON, use text as-is
+      }
+      
+      // Return a Response-like object
+      return {
+        ok: data.ok,
+        status: data.status,
+        statusText: data.statusText,
+        json: async () => {
+          if (typeof parsedData === 'string') {
+            return JSON.parse(parsedData);
+          }
+          return parsedData;
+        },
+        text: async () => {
+          if (typeof parsedData === 'string') {
+            return parsedData;
+          }
+          return JSON.stringify(parsedData);
+        }
+      };
+    } catch (error) {
+      log('Proxy fetch error:', error);
+      throw error;
     }
   }
   
@@ -31,7 +85,9 @@
         document.querySelectorAll('.roblox-blocker-button').forEach(btn => {
           btn.style.display = '';
         });
-        addHamburgerButtons();
+        addHamburgerButtons().catch(err => {
+          log('Error adding buttons:', err);
+        });
       } else {
         // Hide all buttons
         document.querySelectorAll('.roblox-blocker-button').forEach(btn => {
@@ -48,9 +104,19 @@
         document.querySelectorAll('.roblox-blocker-button').forEach(btn => {
           btn.remove();
         });
-        addHamburgerButtons();
+        addHamburgerButtons().catch(err => {
+          log('Error adding buttons:', err);
+        });
       }
       sendResponse({ success: true });
+    } else if (request.action === 'refreshBlocklist') {
+      // Reload blocked games and update visibility
+      log('Refreshing blocklist...');
+      loadBlockedGames().then(() => {
+        hideBlockedGames();
+        sendResponse({ success: true });
+      });
+      return true; // Keep channel open for async
     }
     return true;
   });
@@ -82,97 +148,217 @@
   // Load blocked games from storage
   async function loadBlockedGames() {
     try {
-      const result = await browserAPI.storage.local.get([STORAGE_KEY]);
+      const result = await browserAPI.storage.local.get([STORAGE_KEY, STORAGE_V2_KEY]);
+      
+      // Load new format (v2) if available
+      if (result[STORAGE_V2_KEY] && Array.isArray(result[STORAGE_V2_KEY])) {
+        blockedGames = new Map();
+        result[STORAGE_V2_KEY].forEach(game => {
+          if (game.placeId) {
+            blockedGames.set(game.placeId, game);
+            blockedGameIds.add(game.placeId); // For backward compatibility
+          }
+        });
+        log(`Loaded ${blockedGames.size} blocked games (v2 format)`);
+        return;
+      }
+      
+      // Fallback to old format (array of IDs)
       if (result[STORAGE_KEY]) {
-        blockedGameIds = new Set(result[STORAGE_KEY]);
+        const oldIds = Array.isArray(result[STORAGE_KEY]) ? result[STORAGE_KEY] : [];
+        blockedGameIds = new Set(oldIds);
+        
+        // Migrate old format to new format
+        if (oldIds.length > 0) {
+          log(`Migrating ${oldIds.length} old format IDs to new format...`);
+          await migrateOldBlocklist(oldIds);
+        }
       }
     } catch (error) {
       console.error('Error loading blocked games:', error);
+    }
+  }
+  
+  // Migrate old blocklist (array of IDs) to new format
+  async function migrateOldBlocklist(oldIds) {
+    try {
+      // Check if IDs are universeIds or placeIds by trying to fetch info
+      const migratedGames = [];
+      const universeIds = [];
+      const placeIds = [];
+      
+      // First, try to determine which are universeIds vs placeIds
+      // We'll batch fetch universeIds to get placeIds
+      for (let i = 0; i < oldIds.length; i += 50) {
+        const batch = oldIds.slice(i, i + 50);
+        const universeIdsBatch = batch.join(',');
+        
+        try {
+          const response = await proxyFetch(`https://games.roblox.com/v1/games?universeIds=${universeIdsBatch}`);
+          const data = await response.json();
+          
+          if (data.data) {
+            data.data.forEach(game => {
+              migratedGames.push({
+                placeId: game.rootPlaceId.toString(),
+                name: game.name,
+                universeId: game.id.toString()
+              });
+              placeIds.push(game.rootPlaceId.toString());
+            });
+          }
+        } catch (error) {
+          // If universeIds API fails, try placeIds API
+          try {
+            const placeResponse = await proxyFetch(`https://games.roblox.com/v1/games?placeIds=${batch.join(',')}`);
+            const placeData = await placeResponse.json();
+            
+            if (placeData.data) {
+              placeData.data.forEach(game => {
+                migratedGames.push({
+                  placeId: game.placeId.toString(),
+                  name: game.name,
+                  universeId: game.universeId ? game.universeId.toString() : null
+                });
+                placeIds.push(game.placeId.toString());
+              });
+            }
+          } catch (e) {
+            // If both fail, assume they're placeIds
+            batch.forEach(id => {
+              migratedGames.push({
+                placeId: id,
+                name: null,
+                universeId: null
+              });
+              placeIds.push(id);
+            });
+          }
+        }
+      }
+      
+      // Save migrated data
+      blockedGames = new Map();
+      migratedGames.forEach(game => {
+        blockedGames.set(game.placeId, game);
+        blockedGameIds.add(game.placeId);
+      });
+      
+      await browserAPI.storage.local.set({
+        [STORAGE_V2_KEY]: migratedGames,
+        [STORAGE_KEY]: placeIds // Keep old format for compatibility
+      });
+      
+      log(`Migrated ${migratedGames.length} games to new format`);
+    } catch (error) {
+      console.error('Error migrating blocklist:', error);
     }
   }
 
   // Save blocked games to storage
   async function saveBlockedGames() {
     try {
+      const gamesArray = Array.from(blockedGames.values());
+      const placeIds = Array.from(blockedGames.keys());
+      
       await browserAPI.storage.local.set({
-        [STORAGE_KEY]: Array.from(blockedGameIds)
+        [STORAGE_V2_KEY]: gamesArray,
+        [STORAGE_KEY]: placeIds // Keep old format for compatibility
       });
     } catch (error) {
       console.error('Error saving blocked games:', error);
     }
   }
 
-  // Get game ID from a game card element
+  // Get game placeId from a game card element (prioritize placeId over universeId)
   function getGameId(element) {
-    // Strategy 1: Check for id attribute on the card (universeId) - this is the most reliable
-    // The card has id="universeId" like id="9301279897"
-    if (element.id && /^\d+$/.test(element.id)) {
-      log(`Found game ID from element.id: ${element.id}`);
-      return element.id;
-    }
-    
-    // Strategy 2: Find game link in the element or its children
+    // Strategy 1: Find game link and extract placeId from URL (most reliable)
     let link = element.querySelector('a[href*="/games/"]');
     if (!link && element.tagName === 'A' && element.href) {
       link = element;
     }
     
     if (link && link.href) {
-      // Try to extract from URL: /games/placeId/...
+      // Priority 1: Extract placeId from URL path: /games/placeId/...
       const match = link.href.match(/\/games\/(\d+)/);
       if (match) {
-        log(`Found game ID from URL: ${match[1]}`);
-        return match[1];
+        log(`Found placeId from URL: ${match[1]}`);
+        return { placeId: match[1], source: 'url' };
       }
-      // Also try to extract universeId from URL params
-      const universeMatch = link.href.match(/universeId=(\d+)/);
-      if (universeMatch) {
-        log(`Found universeId from URL params: ${universeMatch[1]}`);
-        return universeMatch[1];
-      }
-      // Try placeId from URL params
+      
+      // Priority 2: Extract placeId from URL params
       const placeMatch = link.href.match(/placeId=(\d+)/);
       if (placeMatch) {
         log(`Found placeId from URL params: ${placeMatch[1]}`);
-        return placeMatch[1];
+        return { placeId: placeMatch[1], source: 'params' };
       }
+      
+      // Priority 3: Extract universeId from URL params (will need conversion)
+      const universeMatch = link.href.match(/universeId=(\d+)/);
+      if (universeMatch) {
+        log(`Found universeId from URL params: ${universeMatch[1]} (will convert to placeId)`);
+        return { universeId: universeMatch[1], source: 'universeId' };
+      }
+    }
+    
+    // Strategy 2: Check for id attribute on the card (universeId)
+    // The card has id="universeId" like id="9301279897"
+    if (element.id && /^\d+$/.test(element.id)) {
+      log(`Found universeId from element.id: ${element.id} (will convert to placeId)`);
+      return { universeId: element.id, source: 'elementId' };
     }
     
     // Strategy 3: Check data attributes
     const gameCard = element.closest('[data-game-id], [data-gameid], [data-place-id], [data-universe-id]');
     if (gameCard) {
-      const id = gameCard.getAttribute('data-game-id') || 
-                 gameCard.getAttribute('data-gameid') || 
-                 gameCard.getAttribute('data-place-id') ||
-                 gameCard.getAttribute('data-universe-id');
-      if (id) {
-        log(`Found game ID from data attribute: ${id}`);
-        return id;
+      const placeId = gameCard.getAttribute('data-place-id');
+      const universeId = gameCard.getAttribute('data-universe-id') || 
+                         gameCard.getAttribute('data-game-id') || 
+                         gameCard.getAttribute('data-gameid');
+      
+      if (placeId) {
+        log(`Found placeId from data attribute: ${placeId}`);
+        return { placeId, source: 'dataAttr' };
+      }
+      if (universeId) {
+        log(`Found universeId from data attribute: ${universeId} (will convert to placeId)`);
+        return { universeId, source: 'dataAttr' };
       }
     }
     
     // Strategy 4: Check the element itself for data attributes
-    const elementId = element.getAttribute('data-game-id') || 
-                      element.getAttribute('data-gameid') ||
-                      element.getAttribute('data-universe-id');
-    if (elementId) {
-      log(`Found game ID from element data attribute: ${elementId}`);
-      return elementId;
+    const elementPlaceId = element.getAttribute('data-place-id');
+    const elementUniverseId = element.getAttribute('data-universe-id') || 
+                               element.getAttribute('data-game-id') || 
+                               element.getAttribute('data-gameid');
+    
+    if (elementPlaceId) {
+      log(`Found placeId from element data attribute: ${elementPlaceId}`);
+      return { placeId: elementPlaceId, source: 'elementDataAttr' };
+    }
+    if (elementUniverseId) {
+      log(`Found universeId from element data attribute: ${elementUniverseId} (will convert to placeId)`);
+      return { universeId: elementUniverseId, source: 'elementDataAttr' };
     }
     
     // Strategy 5: Extract from any link in parent chain
     let current = element.parentElement;
     for (let i = 0; i < 5 && current; i++) {
-      if (current.id && /^\d+$/.test(current.id)) {
-        log(`Found game ID from parent.id: ${current.id}`);
-        return current.id;
-      }
       if (current.tagName === 'A' && current.href) {
         const match = current.href.match(/\/games\/(\d+)/);
         if (match) {
-          log(`Found game ID from parent link: ${match[1]}`);
-          return match[1];
+          log(`Found placeId from parent link: ${match[1]}`);
+          return { placeId: match[1], source: 'parentLink' };
         }
+        const placeMatch = current.href.match(/placeId=(\d+)/);
+        if (placeMatch) {
+          log(`Found placeId from parent link params: ${placeMatch[1]}`);
+          return { placeId: placeMatch[1], source: 'parentLinkParams' };
+        }
+      }
+      if (current.id && /^\d+$/.test(current.id)) {
+        log(`Found universeId from parent.id: ${current.id} (will convert to placeId)`);
+        return { universeId: current.id, source: 'parentId' };
       }
       current = current.parentElement;
     }
@@ -181,7 +367,7 @@
   }
 
   // Create block button (prohibit icon)
-  function createBlockButton(gameCard, gameId) {
+  function createBlockButton(gameCard, placeId) {
     const button = document.createElement('button');
     button.className = 'roblox-blocker-button';
     button.setAttribute('aria-label', 'Block this game');
@@ -191,7 +377,28 @@
     button.addEventListener('click', async (e) => {
       e.stopPropagation();
       e.preventDefault();
-      await blockGame(gameId, gameCard);
+      
+      // Get game info from button data or card
+      let gameInfo = null;
+      if (button.dataset.gameInfo) {
+        try {
+          gameInfo = JSON.parse(button.dataset.gameInfo);
+        } catch (e) {
+          // Fallback
+        }
+      }
+      
+      // If no game info, try to get from card
+      if (!gameInfo) {
+        gameInfo = getGameId(gameCard);
+      }
+      
+      // Ensure we have placeId
+      if (!gameInfo || (!gameInfo.placeId && !gameInfo.universeId)) {
+        gameInfo = { placeId: placeId || gameCard.getAttribute('data-roblox-blocker-id') };
+      }
+      
+      await blockGame(gameInfo, gameCard);
     });
     
     return button;
@@ -305,7 +512,7 @@
   }
 
   // Add hamburger buttons to game cards
-  function addHamburgerButtons() {
+  async function addHamburgerButtons() {
     // Find all potential game cards on the page
     const allGameCards = Array.from(document.querySelectorAll(
       '[data-testid*="game-tile"], ' +
@@ -332,7 +539,8 @@
     let continueCount = 0;
     let buttonsAdded = 0;
     
-    validCards.forEach(card => {
+    // Process cards sequentially to avoid race conditions
+    for (const card of validCards) {
       const isContinue = isContinueCard(card);
       const isRecommended = isRecommendedCard(card);
       
@@ -341,23 +549,21 @@
       // 2. It's a continue card AND continue section is enabled
       if (isRecommended) {
         recommendedCount++;
-        if (addButtonToCard(card)) {
-          buttonsAdded++;
-        }
+        const added = await addButtonToCard(card);
+        if (added) buttonsAdded++;
       } else if (isContinue && enableContinueSection) {
         continueCount++;
-        if (addButtonToCard(card)) {
-          buttonsAdded++;
-        }
+        const added = await addButtonToCard(card);
+        if (added) buttonsAdded++;
       }
-    });
+    }
     
     log(`Processed: ${recommendedCount} recommended cards, ${continueCount} continue cards`);
     log(`Added ${buttonsAdded} block buttons`);
   }
 
   // Add button to a specific game card
-  function addButtonToCard(card) {
+  async function addButtonToCard(card) {
     // Check if icons are enabled
     if (!showIcons) {
       return false;
@@ -372,17 +578,18 @@
       return false;
     }
     
-    const gameId = getGameId(card);
-    if (!gameId) {
+    let gameInfo = getGameId(card);
+    if (!gameInfo) {
       // Try to get game ID from the card itself one more time
       const cardLink = card.closest('a[href*="/games/"]') || card.querySelector('a[href*="/games/"]');
       if (cardLink && cardLink.href) {
         const match = cardLink.href.match(/\/games\/(\d+)/);
         if (match) {
-          const id = match[1];
-          // Store the ID on the card for future reference
-          card.setAttribute('data-roblox-blocker-id', id);
-          log(`Found game ID ${id} from link`);
+          const placeId = match[1];
+          // Store the placeId on the card for future reference
+          card.setAttribute('data-roblox-blocker-id', placeId);
+          gameInfo = { placeId, source: 'fallback' };
+          log(`Found placeId ${placeId} from link`);
         } else {
           log('Could not extract game ID from card');
           return false;
@@ -391,23 +598,47 @@
         log('No game link found in card');
         return false;
       }
-    } else {
-      log(`Found game ID ${gameId}`);
     }
     
-    const finalGameId = gameId || card.getAttribute('data-roblox-blocker-id');
-    if (!finalGameId) {
+    let finalPlaceId = gameInfo.placeId;
+    
+    // If we have universeId but not placeId, convert it
+    if (gameInfo.universeId && !finalPlaceId) {
+      const converted = await convertUniverseIdToPlaceId(gameInfo.universeId);
+      if (converted) {
+        finalPlaceId = converted.placeId;
+        gameInfo.placeId = finalPlaceId;
+        gameInfo.name = converted.name;
+      } else {
+        log(`Failed to convert universeId ${gameInfo.universeId} to placeId`);
+        return false;
+      }
+    }
+    
+    if (!finalPlaceId) {
       return false;
     }
     
-    // Store the ID on the card for future reference
-    card.setAttribute('data-roblox-blocker-id', finalGameId);
+    // Store the placeId on the card for future reference
+    card.setAttribute('data-roblox-blocker-id', finalPlaceId);
     
     // Skip if already blocked
-    if (blockedGameIds.has(finalGameId)) {
+    if (blockedGameIds.has(finalPlaceId)) {
       card.style.display = 'none';
-      log(`Game ${finalGameId} is blocked, hiding`);
+      log(`Game ${finalPlaceId} is blocked, hiding`);
       return false;
+    }
+    
+    // Also check by universeId if we have one
+    if (gameInfo.universeId) {
+      for (const [placeId, game] of blockedGames) {
+        if (game.universeId === gameInfo.universeId) {
+          card.style.display = 'none';
+          card.setAttribute('data-roblox-blocker-id', placeId);
+          log(`Game with universeId ${gameInfo.universeId} is blocked (placeId: ${placeId}), hiding`);
+          return false;
+        }
+      }
     }
     
     // Find the title area to add button next to
@@ -442,7 +673,10 @@
       }
     }
     
-    const button = createBlockButton(card, finalGameId);
+    const button = createBlockButton(card, finalPlaceId);
+    
+    // Store game info on button for blocking
+    button.dataset.gameInfo = JSON.stringify(gameInfo);
     
     if (targetElement === card) {
       // Position absolutely if we couldn't find a good spot
@@ -453,7 +687,7 @@
     }
     
     targetElement.appendChild(button);
-    log(`Added button for game ${finalGameId}`);
+    log(`Added button for game ${finalPlaceId}`);
     return true;
   }
 
@@ -482,7 +716,9 @@
       // Initial processing
       hideBlockedGames();
       if (showIcons) {
-        addHamburgerButtons();
+        addHamburgerButtons().catch(err => {
+          log('Error adding buttons:', err);
+        });
       }
     }, 1000);
     
@@ -509,7 +745,9 @@
         log('New content detected, updating...');
         hideBlockedGames();
         if (showIcons) {
-          addHamburgerButtons();
+          addHamburgerButtons().catch(err => {
+            log('Error adding buttons:', err);
+          });
         }
       }
     });
@@ -523,7 +761,9 @@
     setInterval(() => {
       hideBlockedGames();
       if (showIcons) {
-        addHamburgerButtons();
+        addHamburgerButtons().catch(err => {
+          log('Error adding buttons:', err);
+        });
       }
     }, 3000);
     

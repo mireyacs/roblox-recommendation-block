@@ -12,11 +12,12 @@
     "storage",
     "tabs"
   ],
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "roblox-recommendation-blocker@mireyacs",
-      "strict_min_version": "109.0"
-    }
+  "host_permissions": [
+    "https://games.roblox.com/*",
+    "https://thumbnails.roblox.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
@@ -26,6 +27,7 @@
       "128": "icon128.png"
     }
   },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["https://www.roblox.com/*"],

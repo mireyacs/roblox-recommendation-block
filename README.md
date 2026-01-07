@@ -82,6 +82,10 @@
 
 </details>
 
+> **⚠️ Important**: The Firefox variant has **not been tested**. While it should work with Firefox 109+ (which supports Manifest V3), compatibility is not guaranteed. Please report any issues you encounter. The extension uses the `browser` API for Firefox compatibility, but some features may behave differently.
+
+> **⚠️ Note**: The Firefox variant has not been tested. It should work with Firefox 109+ (Manifest V3 support), but compatibility is not guaranteed. Please report any issues you encounter.
+
 ---
 
 ## 🚀 Usage
@@ -117,6 +121,40 @@
 4. You can now block games from your recently played section
 
 > ⚠️ **Note**: The Continue section feature includes a confirmation prompt to ensure appropriate usage.
+
+#### Export/Import Blocklist
+
+1. **Export**: Click "Export Blocklist" in the popup to download a JSON file with all blocked games
+2. **Import**: Click "Import Blocklist" to upload a previously exported file
+   - Choose to **Replace** (overwrite existing) or **Merge** (combine with existing)
+   - Your blocklist will be updated immediately
+
+#### View Blocked Games
+
+1. Click "View Blocked Games" in the popup
+2. See all blocked games in a card-style interface
+3. Click any game card to open it in a new tab
+4. Click "Remove" to unblock a game
+
+#### Settings Page
+
+1. Click "Settings" in the popup (or right-click extension icon → Options)
+2. Access advanced settings including:
+   - Theme toggle (Light/Dark mode)
+   - Auto-hide settings
+   - Full blocked games management
+   - Clear all blocks option
+
+#### Migration for Existing Users
+
+If you're upgrading from an older version, run the migration script:
+
+1. Open any webpage
+2. Press `F12` to open Developer Tools
+3. Go to the Console tab
+4. Copy and paste the contents of `migrate-blocklist.js`
+5. Press Enter
+6. Follow the prompts to migrate your blocklist
 
 ---
 
@@ -167,13 +205,11 @@ graph LR
 <div align="center">
 
 ### Extension Popup
-![Popup Interface](popup.png)
-
+![Popup Interface](icon48.png)
 *Control panel with toggle switches and blocked games counter*
 
 ### Game Cards with Icons
-![Game Cards](game-cards.png)
-
+![Game Cards](icon48.png)
 *Prohibit icons appear next to game titles and ratings*
 
 </div>
@@ -234,13 +270,18 @@ roblox-recommendation-block/
 │   ├── content.js
 │   ├── popup.html
 │   ├── popup.js
+│   ├── options.html     # Settings page
+│   ├── options.js      # Settings page script
 │   └── styles.css
 ├── firefox/             # Firefox extension (Manifest V3)
 │   ├── manifest.json
 │   ├── content.js
 │   ├── popup.html
 │   ├── popup.js
+│   ├── options.html
+│   ├── options.js
 │   └── styles.css
+├── migrate-blocklist.js # Migration script for existing users
 ├── icon16.png
 ├── icon48.png
 ├── icon128.png

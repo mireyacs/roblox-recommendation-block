@@ -12,6 +12,13 @@
     "storage",
     "tabs"
   ],
+  "host_permissions": [
+    "https://games.roblox.com/*",
+    "https://thumbnails.roblox.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -20,6 +27,7 @@
       "128": "icon128.png"
     }
   },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["https://www.roblox.com/*"],
