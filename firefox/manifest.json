@@ -1,8 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Roblox Recommendation Blocker",
+  "name": "ZeroTolerance Blocker",
   "version": "1.0.0",
-  "description": "Block games from appearing in your Recommended For You section on Roblox",
+  "description": "Zero Tolerance for inappropriate games and items on Roblox",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "zerotolerance@example.com",
+      "strict_min_version": "109.0"
+    }
+  },
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -14,10 +20,12 @@
   ],
   "host_permissions": [
     "https://games.roblox.com/*",
-    "https://thumbnails.roblox.com/*"
+    "https://thumbnails.roblox.com/*",
+    "https://apis.roblox.com/*",
+    "https://economy.roblox.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "scripts": ["background.js"]
   },
   "action": {
     "default_popup": "popup.html",
@@ -27,14 +35,19 @@
       "128": "icon128.png"
     }
   },
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "content_scripts": [
     {
-      "matches": ["https://www.roblox.com/*"],
+      "matches": [
+        "https://*.roblox.com/*",
+        "http://*.roblox.com/*"
+      ],
       "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
   ]
 }
-

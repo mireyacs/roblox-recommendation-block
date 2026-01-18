@@ -5,24 +5,12 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome; // For Fir
 const TOGGLE_KEY = 'showBlockIcons';
 const CONTINUE_SECTION_KEY = 'enableContinueSection';
 const STORAGE_KEY = 'blockedGameIds';
-const THEME_KEY = 'theme';
+const CATALOG_STORAGE_KEY = 'blockedCatalogIds';
+const CATALOG_STORAGE_V2_KEY = 'blockedCatalogItems';
 
 // Current state (will be updated)
 let currentShowIcons = true;
 let currentEnableContinue = false;
-
-// Load theme
-async function loadTheme() {
-  const result = await browserAPI.storage.local.get([THEME_KEY]);
-  const theme = result[THEME_KEY] || 'light';
-  document.body.classList.toggle('dark-mode', theme === 'dark');
-  
-  // If blocked games modal is open, refresh it to update theme
-  const modal = document.getElementById('blockedGamesModal');
-  if (modal && modal.classList.contains('show')) {
-    await showBlockedGames();
-  }
-}
 
 // Modal confirmation for Continue section
 function showContinueSectionConfirmation(callback) {
@@ -78,13 +66,27 @@ async function sendMessageToContentScript(action, data) {
 // Export blocklist
 async function exportBlocklist() {
   try {
-    const result = await browserAPI.storage.local.get([STORAGE_KEY]);
-    const blockedGames = result[STORAGE_KEY] || [];
+    const result = await browserAPI.storage.local.get([STORAGE_KEY, 'blockedGames', CATALOG_STORAGE_KEY, CATALOG_STORAGE_V2_KEY]);
+    
+    // Get blocked games (new format preferred)
+    let blockedGames = result.blockedGames || [];
+    if (!blockedGames.length && result[STORAGE_KEY]) {
+      blockedGames = result[STORAGE_KEY].map(id => ({ placeId: id, name: null, universeId: null }));
+    }
+    
+    // Get blocked catalog items (new format preferred)
+    let blockedCatalogItems = result[CATALOG_STORAGE_V2_KEY] || [];
+    if (!blockedCatalogItems.length && result[CATALOG_STORAGE_KEY]) {
+      blockedCatalogItems = result[CATALOG_STORAGE_KEY].map(id => ({ catalogId: id, name: null, type: null }));
+    }
     
     const exportData = {
-      version: '1.0.0',
+      version: '2.0.0',
       exportDate: new Date().toISOString(),
-      blockedGameIds: blockedGames
+      blockedGames: blockedGames,
+      blockedGameIds: blockedGames.map(g => g.placeId || g), // For backward compatibility
+      blockedCatalogItems: blockedCatalogItems,
+      blockedCatalogIds: blockedCatalogItems.map(i => i.catalogId || i) // For backward compatibility
     };
     
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -108,7 +110,7 @@ async function importBlocklist(file, mode) {
     const text = await file.text();
     const importData = JSON.parse(text);
     
-    // Handle both old and new format
+    // Handle both old and new format for games
     let importedGames = [];
     let isOldFormat = false;
     
@@ -119,13 +121,22 @@ async function importBlocklist(file, mode) {
       // Old format - will be automatically migrated
       isOldFormat = true;
       importedGames = importData.blockedGameIds.map(id => ({ placeId: id, name: null, universeId: null }));
-    } else {
-      throw new Error('Invalid blocklist format');
     }
     
-    const currentResult = await browserAPI.storage.local.get([STORAGE_KEY, 'blockedGames']);
+    // Handle catalog items (optional, may not exist in old exports)
+    let importedCatalogItems = [];
+    if (importData.blockedCatalogItems && Array.isArray(importData.blockedCatalogItems)) {
+      importedCatalogItems = importData.blockedCatalogItems;
+    } else if (importData.blockedCatalogIds && Array.isArray(importData.blockedCatalogIds)) {
+      importedCatalogItems = importData.blockedCatalogIds.map(id => ({ catalogId: id, name: null, type: null }));
+    }
+    
+    const currentResult = await browserAPI.storage.local.get([STORAGE_KEY, 'blockedGames', CATALOG_STORAGE_KEY, CATALOG_STORAGE_V2_KEY]);
     const currentBlocked = currentResult.blockedGames || [];
     const currentPlaceIds = new Set(currentBlocked.map(g => g.placeId || g));
+    
+    const currentCatalogItems = currentResult[CATALOG_STORAGE_V2_KEY] || [];
+    const currentCatalogIds = new Set(currentCatalogItems.map(i => i.catalogId || i));
     
     let newBlocked;
     if (mode === 'replace') {
@@ -142,6 +153,22 @@ async function importBlocklist(file, mode) {
       newBlocked = merged;
     }
     
+    // Handle catalog items import
+    let newCatalogItems;
+    if (mode === 'replace') {
+      newCatalogItems = importedCatalogItems;
+    } else {
+      // Merge: combine and remove duplicates by catalogId
+      const merged = [...currentCatalogItems];
+      importedCatalogItems.forEach(item => {
+        const catalogId = item.catalogId || item;
+        if (!currentCatalogIds.has(catalogId)) {
+          merged.push(item);
+        }
+      });
+      newCatalogItems = merged;
+    }
+    
     // If old format, save as old format to trigger automatic migration
     if (isOldFormat) {
       const oldIds = newBlocked.map(g => g.placeId || g);
@@ -156,13 +183,23 @@ async function importBlocklist(file, mode) {
       });
     }
     
+    // Save catalog items
+    await browserAPI.storage.local.set({
+      [CATALOG_STORAGE_V2_KEY]: newCatalogItems,
+      [CATALOG_STORAGE_KEY]: newCatalogItems.map(i => i.catalogId || i) // Keep old format for compatibility
+    });
+    
     // Notify content script to refresh (will trigger migration if old format)
     await sendMessageToContentScript('refreshBlocklist', {});
     
     // Update UI
     document.getElementById('blockedCount').textContent = newBlocked.length;
+    const catalogCountEl = document.getElementById('blockedCatalogCount');
+    if (catalogCountEl) {
+      catalogCountEl.textContent = newCatalogItems.length;
+    }
     
-    return { success: true, count: newBlocked.length };
+    return { success: true, count: newBlocked.length, catalogCount: newCatalogItems.length };
   } catch (error) {
     console.error('Error importing blocklist:', error);
     throw error;
@@ -182,6 +219,22 @@ async function loadBlockedGames() {
     return oldIds.map(id => ({ placeId: id, name: null, universeId: null }));
   } catch (error) {
     console.error('Error loading blocked games:', error);
+    return [];
+  }
+}
+
+// Load blocked catalog items
+async function loadBlockedCatalogItems() {
+  try {
+    const result = await browserAPI.storage.local.get([CATALOG_STORAGE_KEY, CATALOG_STORAGE_V2_KEY]);
+    if (result[CATALOG_STORAGE_V2_KEY] && Array.isArray(result[CATALOG_STORAGE_V2_KEY])) {
+      return result[CATALOG_STORAGE_V2_KEY]; // New format: array of {catalogId, name, type}
+    }
+    // Fallback to old format
+    const oldIds = result[CATALOG_STORAGE_KEY] || [];
+    return oldIds.map(id => ({ catalogId: id, name: null, type: null }));
+  } catch (error) {
+    console.error('Error loading blocked catalog items:', error);
     return [];
   }
 }
@@ -268,6 +321,94 @@ async function fetchThumbnails(placeIds) {
   return thumbnails;
 }
 
+// Convert placeId to universeId
+async function convertPlaceIdToUniverseId(placeId) {
+  if (!placeId) return null;
+  
+  try {
+    const response = await proxyFetch(`https://apis.roblox.com/universes/v1/places/${placeId}/universe`);
+    const data = await response.json();
+    
+    if (data.universeId) {
+      return data.universeId.toString();
+    }
+  } catch (error) {
+    console.error(`Error converting placeId ${placeId} to universeId:`, error);
+  }
+  
+  return null;
+}
+
+// Fetch game info by placeId
+async function fetchGameInfoByPlaceId(placeId) {
+  if (!placeId) return null;
+  
+  try {
+    // Step 1: Convert placeId to universeId
+    const universeId = await convertPlaceIdToUniverseId(placeId);
+    if (!universeId) {
+      console.error(`Could not convert placeId ${placeId} to universeId`);
+      return null;
+    }
+    
+    // Step 2: Fetch game info using universeId
+    const response = await proxyFetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
+    const data = await response.json();
+    
+    if (data.data && data.data.length > 0) {
+      const game = data.data[0];
+      return {
+        placeId: placeId, // Keep original placeId
+        name: game.name,
+        universeId: universeId
+      };
+    }
+  } catch (error) {
+    console.error(`Error fetching game info for placeId ${placeId}:`, error);
+  }
+  
+  return null;
+}
+
+// Fetch missing game names
+async function fetchMissingGameNames(blockedGames) {
+  const gamesNeedingNames = blockedGames.filter(g => {
+    const placeId = g.placeId || g;
+    return placeId && !g.name;
+  });
+  
+  if (gamesNeedingNames.length === 0) return blockedGames;
+  
+  // Fetch names one by one (convert placeId to universeId, then fetch)
+  const updatedGames = [...blockedGames];
+  for (const game of gamesNeedingNames) {
+    const placeId = game.placeId || game;
+    if (!placeId) continue;
+    
+    try {
+      const gameInfo = await fetchGameInfoByPlaceId(placeId);
+      if (gameInfo && gameInfo.name) {
+        const index = updatedGames.findIndex(g => (g.placeId || g) === placeId);
+        if (index !== -1) {
+          updatedGames[index] = {
+            ...updatedGames[index],
+            placeId: placeId,
+            name: gameInfo.name,
+            universeId: gameInfo.universeId || updatedGames[index].universeId
+          };
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching game name for placeId ${placeId}:`, error);
+    }
+  }
+  
+  // Save updated games back to storage
+  await browserAPI.storage.local.set({ blockedGames: updatedGames });
+  
+  return updatedGames;
+}
+
 // Display blocked games in modal
 async function showBlockedGames() {
   const modal = document.getElementById('blockedGamesModal');
@@ -276,7 +417,10 @@ async function showBlockedGames() {
   modal.classList.add('show');
   listContainer.innerHTML = '<p style="text-align: center; color: #999;">Loading...</p>';
   
-  const blockedGames = await loadBlockedGames();
+  let blockedGames = await loadBlockedGames();
+  
+  // Fetch missing game names
+  blockedGames = await fetchMissingGameNames(blockedGames);
   
   if (blockedGames.length === 0) {
     listContainer.innerHTML = `
@@ -288,22 +432,22 @@ async function showBlockedGames() {
     return;
   }
   
-  const isDarkMode = document.body.classList.contains('dark-mode');
-  const cardBg = isDarkMode ? '#2d2d2d' : '#ffffff';
-  const cardText = isDarkMode ? '#e0e0e0' : '#333';
-  const cardIdText = isDarkMode ? '#999' : '#666';
-  const cardBorder = isDarkMode ? '#444' : '#e0e0e0';
+  const isDarkMode = true; // Always dark mode
+  const cardBg = isDarkMode ? '#111' : '#ffffff';
+  const cardText = isDarkMode ? '#fff' : '#333';
+  const cardIdText = isDarkMode ? '#888' : '#666';
+  const cardBorder = isDarkMode ? '#333' : '#ddd';
   
   listContainer.innerHTML = blockedGames.map(game => {
     const placeId = game.placeId || game;
     const name = game.name || (typeof game === 'string' ? null : game.placeId);
     return `
-    <div class="game-card" data-game-id="${placeId}" style="background: ${cardBg}; color: ${cardText}; border: 1px solid ${cardBorder}; border-radius: 8px; margin-bottom: 16px; padding: 0; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 0; transition: opacity 0.3s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease;">
-      <div class="game-card-info" style="padding: 16px;">
-        <div style="font-weight: 600; margin-bottom: 6px; color: ${cardText}; font-size: 14px; transition: color 0.3s ease;">${name || `Game ${placeId}`}</div>
-        <div class="game-card-id" style="color: ${cardIdText}; font-size: 12px; font-family: monospace; transition: color 0.3s ease;">Place ID: ${placeId}${game.universeId ? ` | Universe ID: ${game.universeId}` : ''}</div>
+    <div class="game-card" data-game-id="${placeId}" style="background: ${cardBg}; color: ${cardText}; border: 1px solid ${cardBorder}; border-radius: 8px; margin-bottom: 12px; padding: 0; overflow: hidden; opacity: 0; transition: opacity 0.3s ease;">
+      <div class="game-card-info" style="padding: 14px;">
+        <div style="font-weight: 600; margin-bottom: 6px; color: ${cardText}; font-size: 14px;">${name || `Game ${placeId}`}</div>
+        <div class="game-card-id" style="color: ${cardIdText}; font-size: 12px; font-family: monospace;">Place ID: ${placeId}${game.universeId ? ` | Universe ID: ${game.universeId}` : ''}</div>
       </div>
-      <button class="game-card-remove" data-game-id="${placeId}" style="width: 100%; background: #f44336; color: white; border: none; padding: 12px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.2s ease, border-color 0.3s ease; border-top: 1px solid ${cardBorder};">Remove</button>
+      <button class="game-card-remove" data-game-id="${placeId}" style="width: 100%; background: #ff3b30; color: white; border: none; padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s ease; border-top: 1px solid ${cardBorder};">Remove</button>
     </div>
   `;
   }).join('');
@@ -366,12 +510,221 @@ async function unblockGame(placeId) {
   }
 }
 
+// Fetch catalog item details (name, type, assetId)
+async function fetchCatalogItemInfo(catalogId) {
+  if (!catalogId) return null;
+  
+  try {
+    const response = await proxyFetch(`https://economy.roblox.com/v2/assets/${catalogId}/details`);
+    const data = await response.json();
+    
+    if (data && data.Name) {
+      return {
+        name: data.Name || null,
+        type: data.ProductType || 'Unknown',
+        assetId: data.AssetId || data.TargetId || catalogId
+      };
+    }
+  } catch (error) {
+    console.error(`Error fetching catalog item info for ${catalogId}:`, error);
+  }
+  
+  return null;
+}
+
+// Fetch catalog item thumbnails
+async function fetchCatalogThumbnails(catalogIds) {
+  if (!catalogIds || catalogIds.length === 0) return {};
+  
+  const thumbnails = {};
+  
+  // Fetch thumbnails directly using catalogIds (which are assetIds)
+  // Fetch in batches of 50 (API limit)
+  for (let i = 0; i < catalogIds.length; i += 50) {
+    const batch = catalogIds.slice(i, i + 50);
+    const ids = batch.join(',');
+    
+    try {
+      const response = await proxyFetch(`https://thumbnails.roblox.com/v1/assets?assetIds=${ids}&returnPolicy=PlaceHolder&size=768x432&format=Png&isCircular=false`);
+      const data = await response.json();
+      
+      if (data.data) {
+        data.data.forEach(item => {
+          if (item.state === 'Completed' && item.imageUrl) {
+            const catalogId = item.targetId.toString();
+            thumbnails[catalogId] = item.imageUrl;
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching catalog thumbnails:', error);
+    }
+  }
+  
+  return thumbnails;
+}
+
+// Fetch missing catalog item info
+async function fetchMissingCatalogItemInfo(blockedItems) {
+  const itemsNeedingInfo = blockedItems.filter(item => {
+    const catalogId = item.catalogId || item;
+    return catalogId && (!item.name || !item.type || item.type === 'Unknown');
+  });
+  
+  if (itemsNeedingInfo.length === 0) return blockedItems;
+  
+  const updatedItems = [...blockedItems];
+  
+  // Fetch items in parallel (but limit concurrency to avoid overwhelming the API)
+  const batchSize = 10; // Process 10 items at a time
+  for (let i = 0; i < itemsNeedingInfo.length; i += batchSize) {
+    const batch = itemsNeedingInfo.slice(i, i + batchSize);
+    
+    // Fetch all items in batch in parallel
+    const promises = batch.map(async (item) => {
+      const catalogId = item.catalogId || item;
+      try {
+        const response = await proxyFetch(`https://economy.roblox.com/v2/assets/${catalogId}/details`);
+        const data = await response.json();
+        
+        if (data && data.Name) {
+          const index = updatedItems.findIndex(blocked => {
+            const blockedId = blocked.catalogId || blocked;
+            return blockedId.toString() === catalogId;
+          });
+          
+          if (index !== -1) {
+            updatedItems[index] = {
+              ...updatedItems[index],
+              catalogId: catalogId,
+              name: data.Name || updatedItems[index].name || null,
+              type: data.ProductType || updatedItems[index].type || 'Unknown'
+            };
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching catalog item info for ${catalogId}:`, error);
+      }
+    });
+    
+    await Promise.all(promises);
+  }
+  
+  // Save updated items back to storage
+  await browserAPI.storage.local.set({ [CATALOG_STORAGE_V2_KEY]: updatedItems });
+  
+  return updatedItems;
+}
+
+// Show blocked catalog items in modal
+async function showBlockedCatalogItems() {
+  const modal = document.getElementById('blockedCatalogItemsModal');
+  const listContainer = document.getElementById('blockedCatalogItemsList');
+  
+  modal.classList.add('show');
+  listContainer.innerHTML = '<p style="text-align: center; color: #999;">Loading...</p>';
+  
+  let blockedItems = await loadBlockedCatalogItems();
+  
+  // Fetch missing info (name, type)
+  blockedItems = await fetchMissingCatalogItemInfo(blockedItems);
+  
+  if (blockedItems.length === 0) {
+    listContainer.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <p>No catalog items blocked yet</p>
+      </div>
+    `;
+    return;
+  }
+  
+  const isDarkMode = true; // Always dark mode
+  const cardBg = isDarkMode ? '#111' : '#ffffff';
+  const cardText = isDarkMode ? '#fff' : '#333';
+  const cardIdText = isDarkMode ? '#888' : '#666';
+  const cardBorder = isDarkMode ? '#333' : '#ddd';
+  
+  listContainer.innerHTML = blockedItems.map(item => {
+    const catalogId = item.catalogId || item;
+    const name = item.name || `Catalog Item ${catalogId}`;
+    const type = item.type || 'Unknown';
+    return `
+    <div class="game-card" data-catalog-id="${catalogId}" style="background: ${cardBg}; color: ${cardText}; border: 1px solid ${cardBorder}; border-radius: 8px; margin-bottom: 12px; padding: 0; overflow: hidden; opacity: 0; transition: opacity 0.3s ease;">
+      <div class="game-card-info" style="padding: 14px;">
+        <div style="font-weight: 600; margin-bottom: 6px; color: ${cardText}; font-size: 14px;">${name}</div>
+        <div class="game-card-id" style="color: ${cardIdText}; font-size: 12px; font-family: monospace;">Catalog ID: ${catalogId} | Type: ${type}</div>
+      </div>
+      <button class="game-card-remove" data-catalog-id="${catalogId}" style="width: 100%; background: #ff3b30; color: white; border: none; padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s ease; border-top: 1px solid ${cardBorder};">Remove</button>
+    </div>
+  `;
+  }).join('');
+  
+  // Fade in cards after a brief delay
+  setTimeout(() => {
+    listContainer.querySelectorAll('.game-card').forEach((card, index) => {
+      setTimeout(() => {
+        card.style.opacity = '1';
+      }, index * 30); // Stagger the fade-in slightly
+    });
+  }, 10);
+  
+  // Add click handlers
+  listContainer.querySelectorAll('.game-card').forEach(card => {
+    const catalogId = card.getAttribute('data-catalog-id');
+    card.style.position = 'relative';
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', (e) => {
+      if (e.target.classList.contains('game-card-remove')) return;
+      browserAPI.tabs.create({ url: `https://www.roblox.com/catalog/${catalogId}` });
+    });
+  });
+  
+  // Add remove handlers
+  listContainer.querySelectorAll('.game-card-remove').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const catalogId = btn.getAttribute('data-catalog-id');
+      await unblockCatalogItem(catalogId);
+      await showBlockedCatalogItems(); // Refresh list
+      const blockedItems = await loadBlockedCatalogItems();
+      // Update count if displayed
+      const catalogCountEl = document.getElementById('blockedCatalogCount');
+      if (catalogCountEl) {
+        catalogCountEl.textContent = blockedItems.length;
+      }
+    });
+  });
+}
+
+// Unblock a catalog item
+async function unblockCatalogItem(catalogId) {
+  try {
+    const result = await browserAPI.storage.local.get([CATALOG_STORAGE_KEY, CATALOG_STORAGE_V2_KEY]);
+    
+    // Update new format
+    if (result[CATALOG_STORAGE_V2_KEY] && Array.isArray(result[CATALOG_STORAGE_V2_KEY])) {
+      const newBlocked = result[CATALOG_STORAGE_V2_KEY].filter(item => {
+        const itemCatalogId = item.catalogId || item;
+        return itemCatalogId !== catalogId;
+      });
+      await browserAPI.storage.local.set({ [CATALOG_STORAGE_V2_KEY]: newBlocked });
+    }
+    
+    // Update old format for compatibility
+    const oldIds = result[CATALOG_STORAGE_KEY] || [];
+    const newBlocked = oldIds.filter(id => id !== catalogId);
+    await browserAPI.storage.local.set({ [CATALOG_STORAGE_KEY]: newBlocked });
+    
+    await sendMessageToContentScript('refreshBlocklist', {});
+  } catch (error) {
+    console.error('Error unblocking catalog item:', error);
+  }
+}
+
 // Load and display current state
 async function loadState() {
   try {
-    // Load theme first
-    await loadTheme();
-    
     // Load toggle states
     const result = await browserAPI.storage.local.get([TOGGLE_KEY, CONTINUE_SECTION_KEY]);
     currentShowIcons = result[TOGGLE_KEY] !== false; // Default to true
@@ -381,11 +734,19 @@ async function loadState() {
     document.getElementById('toggleContinueSection').checked = currentEnableContinue;
     
     // Load blocked games count
-    const blockedResult = await browserAPI.storage.local.get([STORAGE_KEY, 'blockedGames']);
+    const blockedResult = await browserAPI.storage.local.get([STORAGE_KEY, 'blockedGames', CATALOG_STORAGE_KEY, CATALOG_STORAGE_V2_KEY]);
     const blockedGames = blockedResult.blockedGames || blockedResult[STORAGE_KEY] || [];
     const count = Array.isArray(blockedGames) ? blockedGames.length : 0;
     document.getElementById('blockedCount').textContent = count;
     document.getElementById('existingBlockCount').textContent = count;
+    
+    // Load blocked catalog items count
+    const blockedCatalogItems = blockedResult[CATALOG_STORAGE_V2_KEY] || blockedResult[CATALOG_STORAGE_KEY] || [];
+    const catalogCount = Array.isArray(blockedCatalogItems) ? blockedCatalogItems.length : 0;
+    const catalogCountEl = document.getElementById('blockedCatalogCount');
+    if (catalogCountEl) {
+      catalogCountEl.textContent = catalogCount;
+    }
     
     // Setup icon toggle handler (only once)
     const toggleIconsEl = document.getElementById('toggleIcons');
@@ -431,9 +792,13 @@ async function loadState() {
     
     // Setup action buttons
     document.getElementById('viewBlockedBtn').addEventListener('click', showBlockedGames);
+    const viewCatalogBtn = document.getElementById('viewBlockedCatalogBtn');
+    if (viewCatalogBtn) {
+      viewCatalogBtn.addEventListener('click', showBlockedCatalogItems);
+    }
     document.getElementById('exportBtn').addEventListener('click', exportBlocklist);
     document.getElementById('settingsBtn').addEventListener('click', () => {
-      chrome.runtime.openOptionsPage();
+      browserAPI.runtime.openOptionsPage();
     });
     
     // Setup import button
@@ -477,12 +842,28 @@ async function loadState() {
       document.getElementById('blockedGamesModal').classList.remove('show');
     });
     
+    const closeCatalogModal = document.getElementById('closeBlockedCatalogModal');
+    if (closeCatalogModal) {
+      closeCatalogModal.addEventListener('click', () => {
+        document.getElementById('blockedCatalogItemsModal').classList.remove('show');
+      });
+    }
+    
     // Close modals on overlay click
     document.getElementById('blockedGamesModal').addEventListener('click', (e) => {
       if (e.target.id === 'blockedGamesModal') {
         e.target.classList.remove('show');
       }
     });
+    
+    const catalogModal = document.getElementById('blockedCatalogItemsModal');
+    if (catalogModal) {
+      catalogModal.addEventListener('click', (e) => {
+        if (e.target.id === 'blockedCatalogItemsModal') {
+          e.target.classList.remove('show');
+        }
+      });
+    }
     
     document.getElementById('importModal').addEventListener('click', (e) => {
       if (e.target.id === 'importModal') {
@@ -495,11 +876,7 @@ async function loadState() {
 }
 
 // Listen for theme changes from options page
-browserAPI.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.theme) {
-    loadTheme();
-  }
-});
+// Theme toggle has been deprecated - dark mode is always enabled
 
 // Load state when popup opens
 loadState();

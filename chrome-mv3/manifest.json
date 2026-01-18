@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Roblox Recommendation Blocker",
+  "name": "ZeroTolerance Blocker",
   "version": "1.0.0",
-  "description": "Block games from appearing in your Recommended For You section on Roblox",
+  "description": "Zero Tolerance for inappropriate games and items on Roblox",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -14,7 +14,9 @@
   ],
   "host_permissions": [
     "https://games.roblox.com/*",
-    "https://thumbnails.roblox.com/*"
+    "https://thumbnails.roblox.com/*",
+    "https://apis.roblox.com/*",
+    "https://economy.roblox.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -30,11 +32,13 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://www.roblox.com/*"],
+      "matches": [
+        "https://*.roblox.com/*",
+        "http://*.roblox.com/*"
+      ],
       "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
   ]
 }
-

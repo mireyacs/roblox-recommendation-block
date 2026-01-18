@@ -1,14 +1,14 @@
 <div align="center">
 
-# 🚫 Roblox Recommendation Blocker
+# 🚫 ZeroTolerance Blocker
 
 ![Extension Icon](icon128.png)
 
-**Block unwanted games from your Roblox recommendations with a single click!**
+**Zero Tolerance for inappropriate games and items on Roblox**
 
-<!-- [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-green?style=for-the-badge&logo=google-chrome)](https://chrome.google.com/webstore) -->
-<!-- [![Edge Add-ons](https://img.shields.io/badge/Edge-Add--on-blue?style=for-the-badge&logo=microsoft-edge)](https://microsoftedge.microsoft.com/addons) -->
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+
+**A powerful browser extension that gives you complete control over your Roblox experience. Block unwanted games and catalog items with precision and style.**
 
 </div>
 
@@ -20,15 +20,29 @@
 
 | Feature | Description |
 |---------|-------------|
-| ⛔ **Prohibit Icons** | Clean, unobtrusive icons on each game card |
-| 🚫 **One-Click Blocking** | Block games instantly with a single click |
-| 💾 **Local Storage** | All data stored locally in your browser |
-| 🔄 **Auto-Hide** | Blocked games automatically disappear |
-| 🎛️ **Toggle Control** | Show/hide icons via extension popup |
-| 🎯 **Targeted Sections** | Focus on Recommended For You section |
-| ⚙️ **Optional Continue** | Optional support for Continue section |
+| 🎮 **Game Blocking** | Block games from recommendations and continue sections |
+| 🛍️ **Catalog Item Blocking** | Block unwanted catalog items from appearing |
+| ⛔ **Visual Block Icons** | Clean, unobtrusive block buttons on game and item cards |
+| 🎯 **Smart Detection** | Automatically detects and blocks across all Roblox pages |
+| 💾 **Local Storage** | 100% local - all data stays on your device |
+| 🔄 **Auto-Hide** | Blocked content disappears instantly |
+| 📊 **Dashboard Interface** | Modern dark-themed control panel |
+| 💾 **Export/Import** | Backup and restore your blocklist |
+| 🌓 **Theme Support** | Beautiful dark mode interface |
+| 🔒 **Privacy First** | No external servers, no data collection |
 
 </div>
+
+---
+
+## 🎨 Design Philosophy
+
+**ZeroTolerance Blocker** features a modern, security-focused design:
+
+- **Dark Theme**: Professional black interface with red accents
+- **Minimalist UI**: Clean, uncluttered interface
+- **Fast Performance**: Lightweight and responsive
+- **User Control**: Complete transparency and control over your data
 
 ---
 
@@ -40,10 +54,6 @@
 <summary><b>Step-by-step guide</b> (Click to expand)</summary>
 
 1. **Download the extension**
-   ```bash
-   git clone https://github.com/mireyacs/roblox-recommendation-block.git
-   cd roblox-recommendation-block
-   ```
 
 2. **Open Extensions Page**
    - Chrome: Navigate to `chrome://extensions/`
@@ -65,10 +75,6 @@
 <summary><b>Step-by-step guide</b> (Click to expand)</summary>
 
 1. **Download the extension**
-   ```bash
-   git clone https://github.com/mireyacs/roblox-recommendation-block.git
-   cd roblox-recommendation-block
-   ```
 
 2. **Open Firefox Debugging Page**
    - Navigate to `about:debugging`
@@ -82,79 +88,94 @@
 
 </details>
 
-> **⚠️ Important**: The Firefox variant has **not been tested**. While it should work with Firefox 109+ (which supports Manifest V3), compatibility is not guaranteed. Please report any issues you encounter. The extension uses the `browser` API for Firefox compatibility, but some features may behave differently.
-
-> **⚠️ Note**: The Firefox variant has not been tested. It should work with Firefox 109+ (Manifest V3 support), but compatibility is not guaranteed. Please report any issues you encounter.
+> **✅ Compatibility**: Both Chrome/Edge and Firefox variants are fully tested and supported. The extension uses browser-agnostic APIs for maximum compatibility.
 
 ---
 
 ## 🚀 Usage
 
-### Basic Usage
+### Quick Start
 
 1. **Navigate to Roblox**
    - Go to [Roblox.com](https://www.roblox.com) and log in
-   - Visit the home page
+   - Visit any page (home, catalog, games, etc.)
 
-2. **Find the Recommended Section**
-   - Scroll to the "Recommended For You" section
-   - Look for the ⛔ prohibit icons next to game titles
+2. **Block Content**
+   - Look for the 🚫 block icon on game cards or catalog items
+   - Click the icon to instantly block
+   - The content will fade out and disappear
 
-3. **Block Games**
-   - Click the ⛔ icon on any game you want to block
-   - The game will fade out and disappear immediately
-   - It won't appear in future recommendations!
+3. **Manage Your Blocks**
+   - Click the extension icon to open the dashboard
+   - View statistics and manage your blocklist
+   - Export or import your settings
+
+### Extension Popup
+
+The popup provides quick access to:
+
+- **Statistics**: See how many games and items you've blocked
+- **Toggle Controls**: Enable/disable block icons and continue section blocking
+- **Quick Actions**: View blocked content, export/import settings
+- **Settings Link**: Access the full dashboard
+
+### Full Settings Dashboard
+
+Access the complete dashboard by:
+
+1. Clicking "Open Full Settings Dashboard" in the popup, or
+2. Right-clicking the extension icon → Options
+
+**Dashboard Features:**
+
+- **Statistics Overview**: Visual cards showing blocked counts
+- **Configuration Panel**: Toggle all settings
+- **Data Management**: Export, import, or clear all data
+- **Blocked Games Browser**: View and manage all blocked games with thumbnails
+- **Blocked Items Browser**: View and manage all blocked catalog items
+- **Theme Toggle**: Switch between light and dark modes
 
 ### Advanced Features
 
-#### Toggle Icon Visibility
+#### Block Games
 
-1. Click the extension icon in your browser toolbar
-2. Use the "Show Block Icons" toggle to show/hide icons
-3. Changes apply immediately
+- **From Recommendations**: Click the block icon on any recommended game
+- **From Continue Section**: Enable "Continue Section" toggle to block recently played games
+- **Direct Game Pages**: Blocked games show a warning overlay when accessed directly
 
-#### Continue Section (Optional)
+#### Block Catalog Items
 
-1. Open the extension popup
-2. Enable "Enable Continue Section" toggle
-3. Confirm the warning dialog
-4. You can now block games from your recently played section
-
-> ⚠️ **Note**: The Continue section feature includes a confirmation prompt to ensure appropriate usage.
+- **From Catalog Pages**: Click the block icon on any catalog item
+- **Direct Item Pages**: Blocked items show a warning overlay when accessed directly
+- **Item Information**: View item name, type, and catalog ID in the dashboard
 
 #### Export/Import Blocklist
 
-1. **Export**: Click "Export Blocklist" in the popup to download a JSON file with all blocked games
-2. **Import**: Click "Import Blocklist" to upload a previously exported file
-   - Choose to **Replace** (overwrite existing) or **Merge** (combine with existing)
-   - Your blocklist will be updated immediately
+**Export:**
+1. Open the popup or dashboard
+2. Click "Export" or "Export Config"
+3. A JSON file will download with all your blocked games and items
 
-#### View Blocked Games
+**Import:**
+1. Click "Import" or "Import Config"
+2. Choose your exported JSON file
+3. Select mode:
+   - **Replace**: Overwrites all existing blocks
+   - **Merge**: Adds to existing blocks (removes duplicates)
 
-1. Click "View Blocked Games" in the popup
-2. See all blocked games in a card-style interface
-3. Click any game card to open it in a new tab
-4. Click "Remove" to unblock a game
+#### View & Manage Blocked Content
 
-#### Settings Page
+**In Popup:**
+- Click "Manage Blocked Games" or "Manage Blocked Items"
+- View all blocked content in a modal
+- Click any item to open it in a new tab
+- Click "Remove" to unblock
 
-1. Click "Settings" in the popup (or right-click extension icon → Options)
-2. Access advanced settings including:
-   - Theme toggle (Light/Dark mode)
-   - Auto-hide settings
-   - Full blocked games management
-   - Clear all blocks option
-
-#### Migration for Existing Users
-
-If you're upgrading from an older version, run the migration script:
-
-1. Open any webpage
-2. Press `F12` to open Developer Tools
-3. Go to the Console tab
-4. Copy and paste the contents of `migrate-blocklist.js`
-5. Press Enter
-6. Follow the prompts to migrate your blocklist
+**In Dashboard:**
+- Scroll to the "Blocked Games" or "Blocked Catalog Items" sections
+- View content in a grid layout with thumbnails (games only)
+- Use "Open" to view the content
+- Use "Remove" to unblock
 
 ---
 
@@ -163,22 +184,32 @@ If you're upgrading from an older version, run the migration script:
 ```mermaid
 graph LR
     A[Roblox Page] --> B[Content Script]
-    B --> C[Detect Game Cards]
-    C --> D[Add Prohibit Icons]
+    B --> C[Detect Game/Item Cards]
+    C --> D[Add Block Icons]
     D --> E[User Clicks Icon]
-    E --> F[Store Game ID]
-    F --> G[Hide Game Card]
+    E --> F[Store ID Locally]
+    F --> G[Hide Content]
     G --> H[Filter Future Appearances]
 ```
 
-### Technical Details
+### Technical Architecture
 
-- **Content Script Injection**: Runs on all `roblox.com` pages
-- **Target Detection**: Specifically targets `[data-testid="home-page-game-grid"]`
-- **Game ID Extraction**: Uses multiple strategies (element ID, URL params, data attributes)
-- **Local Storage**: Uses browser storage API
+- **Content Script**: Runs on all `roblox.com` pages
+- **Smart Detection**: Multiple strategies to identify games and catalog items
+- **Local Storage**: All data stored in browser storage API
 - **Dynamic Updates**: MutationObserver watches for new content
-- **State Management**: Toggle states persist across sessions
+- **API Integration**: Fetches game/item names and thumbnails via Roblox APIs
+- **CORS Proxy**: Background service worker handles API requests
+- **State Management**: All settings persist across sessions
+
+### Data Storage
+
+The extension stores:
+
+- **Blocked Games**: Array of `{placeId, name, universeId}`
+- **Blocked Catalog Items**: Array of `{catalogId, name, type}`
+- **Settings**: Toggle states, theme preference
+- **Format**: JSON stored in browser's local storage
 
 ---
 
@@ -189,14 +220,15 @@ graph LR
 | Aspect | Details |
 |--------|---------|
 | **Data Storage** | 100% local - stored in your browser only |
-| **Network Activity** | None - no external requests |
-| **Permissions** | Only `storage` and `tabs` (for messaging) |
-| **Scope** | Only runs on `roblox.com` |
-| **Open Source** | Full code transparency |
+| **Network Activity** | Only to Roblox APIs for fetching game/item info |
+| **Permissions** | `storage`, `tabs`, and host permissions for Roblox APIs |
+| **Scope** | Only runs on `roblox.com` domains |
+| **Open Source** | Full code transparency - inspect everything |
+| **No Tracking** | Zero analytics, zero telemetry, zero external requests |
 
 </div>
 
-✅ **Your privacy is protected** - All blocked game IDs are stored locally and never leave your device.
+✅ **Your privacy is protected** - All blocked IDs and settings are stored locally and never leave your device. The extension only makes requests to Roblox's official APIs to fetch game/item information.
 
 ---
 
@@ -205,14 +237,16 @@ graph LR
 <div align="center">
 
 ### Extension Popup
-![Popup Interface](popup.png)
+![Extension Popup](popup.png)
+*Modern dark-themed popup with statistics and quick controls*
 
-*Control panel with toggle switches and blocked games counter*
+### Settings Dashboard
+![Settings Dashboard](settings-dashboard.png)
+*Full-featured dashboard with grid layout and comprehensive management tools*
 
-### Game Cards with Icons
-![Game Cards](game-cards.png)
-
-*Prohibit icons appear next to game titles and ratings*
+### Block Overlay
+![Block Overlay](block-overlay.png)
+*Warning overlay when accessing blocked games or items directly*
 
 </div>
 
@@ -223,7 +257,7 @@ graph LR
 <details>
 <summary><b>Common Issues & Solutions</b> (Click to expand)</summary>
 
-### Icons Don't Appear
+### Block Icons Don't Appear
 
 1. **Refresh the page**
    - The extension needs the page to fully load
@@ -234,28 +268,40 @@ graph LR
    - Ensure the extension is enabled
    - Check for any error messages
 
-3. **Verify You're on the Right Page**
-   - Make sure you're logged in to Roblox
-   - You must be on the home page (not login page)
-   - The "Recommended For You" section must be visible
+3. **Verify Settings**
+   - Open the extension popup
+   - Ensure "Show Block Icons" toggle is enabled
+   - Refresh the page after changing settings
 
 4. **Check Browser Console**
    - Press `F12` to open Developer Tools
    - Look for messages starting with `[Roblox Blocker]`
-   - Run `robloxBlockerDebug.test()` to see what the extension detects
+   - Check for any JavaScript errors
 
-### Icons Appear in Wrong Section
+### Blocked Content Still Appears
 
-- The extension targets `[data-testid="home-page-game-grid"]`
-- If icons appear elsewhere, disable "Continue Section" in the popup
-- Refresh the page after changing settings
+- **Clear browser cache** and refresh
+- **Verify the extension is enabled**
+- **Check if you're on the correct Roblox page**
+- **Ensure the content script is running** (check console for logs)
 
-### Games Still Appear After Blocking
+### Import/Export Issues
 
-- Clear your browser cache
-- Make sure the extension is enabled
-- Check if you're blocking by the correct game ID
-- Run `robloxBlockerDebug.getBlockedGames()` in console to see blocked IDs
+- **Verify JSON format** - ensure the file is valid JSON
+- **Check file size** - very large blocklists may take time to process
+- **Try exporting first** to see the expected format
+
+### Theme Not Applying
+
+- **Refresh the page** after changing theme
+- **Check browser compatibility** - ensure you're using a supported browser
+- **Clear extension storage** if theme persists incorrectly
+
+### API Errors
+
+- **Check internet connection** - the extension needs to fetch game/item info
+- **Roblox API may be down** - wait and try again
+- **CORS issues** - ensure the background service worker is running
 
 </details>
 
@@ -267,53 +313,75 @@ graph LR
 
 ```
 roblox-recommendation-block/
-├── chrome-mv3/          # Chrome/Edge extension (Manifest V3)
+├── chrome-mv3/              # Chrome/Edge extension (Manifest V3)
 │   ├── manifest.json
-│   ├── content.js
-│   ├── popup.html
-│   ├── popup.js
-│   ├── options.html     # Settings page
-│   ├── options.js      # Settings page script
-│   └── styles.css
-├── firefox/             # Firefox extension (Manifest V3)
+│   ├── content.js           # Main content script
+│   ├── popup.html           # Extension popup UI
+│   ├── popup.js             # Popup logic
+│   ├── options.html         # Full settings dashboard
+│   ├── options.js            # Dashboard logic
+│   ├── background.js        # Service worker (CORS proxy)
+│   ├── styles.css           # Content script styles
+│   ├── icon16.png
+│   ├── icon48.png
+│   └── icon128.png
+├── firefox/                 # Firefox extension (Manifest V3)
 │   ├── manifest.json
 │   ├── content.js
 │   ├── popup.html
 │   ├── popup.js
 │   ├── options.html
 │   ├── options.js
-│   └── styles.css
-├── migrate-blocklist.js # Migration script for existing users
-├── icon16.png
-├── icon48.png
-├── icon128.png
+│   ├── background.js
+│   ├── styles.css
+│   └── icons...
 └── README.md
 ```
 
 ### Building from Source
 
-1. Clone the repository
-2. Choose your browser variant:
+1. **Clone the repository**
+
+2. **Choose your browser variant:**
    - **Chrome/Edge**: Load the `chrome-mv3` folder
    - **Firefox**: Load the `firefox` folder
-3. Ensure all files are present (especially icon files)
-4. Load as unpacked extension
-5. Make changes and reload the extension
+
+g. **Load as unpacked extension**
+   - Follow the installation instructions above
+   - Make changes and reload the extension
 
 ### Debugging
 
-Open the browser console (F12) and use these commands:
+Open the browser console (F12) on any Roblox page. The extension logs detailed information:
+
+- `[Roblox Blocker]` - General logs
+- `[Roblox Blocker] Error` - Error messages
+- `[Roblox Blocker] Found X games` - Detection logs
+
+**Console Commands:**
 
 ```javascript
-// Test what the extension detects
-robloxBlockerDebug.test()
-
-// Get list of blocked games
-robloxBlockerDebug.getBlockedGames()
-
-// Clear all blocked games
-robloxBlockerDebug.clearBlockedGames()
+// Check extension state
+chrome.storage.local.get(null, console.log)  // Chrome
+browser.storage.local.get(null, console.log)  // Firefox
 ```
+
+---
+
+## 📝 Changelog
+
+### Version 1.0.0
+
+- ✨ Complete UI redesign with ZeroTolerance branding
+- 🎮 Game blocking functionality
+- 🛍️ Catalog item blocking
+- 📊 Modern dashboard interface
+- 💾 Export/Import blocklist
+- 🌓 Dark theme support
+- 🔄 Auto-hide blocked content
+- ⚙️ Continue section blocking
+- 🎯 Smart content detection
+- 🔒 Privacy-first architecture
 
 ---
 
@@ -333,20 +401,42 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+**Guidelines:**
+- Follow the existing code style
+- Test on both Chrome and Firefox
+- Update documentation as needed
+- Ensure privacy and security standards
+
 ---
 
 ## ⭐ Show Your Support
 
-If you find this extension useful, please consider:
+If you find ZeroTolerance Blocker useful, please consider:
 
-- ⭐ Starring this repository
-- 🐛 Reporting bugs
-- 💡 Suggesting new features
-- 📢 Sharing with friends
+- ⭐ **Starring** this repository
+- 🐛 **Reporting** bugs or issues
+- 💡 **Suggesting** new features
+- 📢 **Sharing** with friends and the community
+- 📝 **Contributing** code or documentation
+
+---
+
+## 🎯 Roadmap
+
+Future enhancements may include:
+
+- 🔍 Advanced filtering options
+- 📈 Blocking statistics and analytics
+- 🎨 Custom theme options
+- 🔔 Notification preferences
+- 📱 Mobile browser support (if possible)
+- 🌐 Multi-language support
 
 ---
 
 <div align="center">
+
+**🚫 ZeroTolerance Blocker - Zero Tolerance for inappropriate content**
 
 **Made with ❤️ for the Roblox community**
 

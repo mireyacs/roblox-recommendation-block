@@ -3,516 +3,399 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
+    :root {
+      --bg-color: #000000;
+      --card-bg: #111111;
+      --text-main: #ffffff;
+      --text-sub: #888888;
+      --accent: #ff3b30;
+      --accent-hover: #d32f2f;
+      --border: #333333;
+      --radius: 8px;
     }
-    
-    ::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 4px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background: #888;
-      border-radius: 4px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-      background: #555;
-    }
-    
-    body.dark-mode ::-webkit-scrollbar-track {
-      background: #1a1a1a;
-    }
-    
-    body.dark-mode ::-webkit-scrollbar-thumb {
-      background: #555;
-    }
-    
-    body.dark-mode ::-webkit-scrollbar-thumb:hover {
-      background: #777;
-    }
-    
-    /* Firefox scrollbar */
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: #888 #f1f1f1;
-    }
-    
-    body.dark-mode,
-    body.dark-mode * {
-      scrollbar-color: #555 #1a1a1a;
-    }
-    
+
     body {
-      width: 300px;
-      padding: 16px;
+      width: 320px;
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      font-size: 14px;
-      background: white;
-      color: #333;
-      transition: background 0.3s ease, color 0.3s ease;
+      padding: 0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
     }
-    
-    body.dark-mode {
-      background: #1e1e1e;
-      color: #e0e0e0;
-    }
-    
-    body.dark-mode .toggle-container {
-      background: #2d2d2d;
-    }
-    
-    body.dark-mode .toggle-label span {
-      color: #999;
-    }
-    
-    body.dark-mode .stats {
-      background: #2d4d2d;
-      color: #81c784;
-    }
-    
-    body.dark-mode .modal {
-      background: #2d2d2d;
-      color: #e0e0e0;
-    }
-    
-    body.dark-mode .modal-content {
-      color: #e0e0e0;
-    }
-    
-    body.dark-mode .game-card {
-      background: #2d2d2d;
-    }
-    
-    body.dark-mode .game-card:hover {
-      background: #3d3d3d;
-    }
-    
-    body.dark-mode .game-card-id {
-      color: #999;
-    }
-    
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-color); }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
     .header {
-      margin-bottom: 16px;
-    }
-    
-    .header h3 {
-      margin: 0 0 4px 0;
-      font-size: 16px;
-      font-weight: 600;
-    }
-    
-    .header p {
-      margin: 0;
-      color: #666;
-      font-size: 12px;
-    }
-    
-    .toggle-container {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background: var(--card-bg);
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-title span { color: var(--accent); }
+
+    .content {
+      padding: 16px;
+    }
+
+    .stats-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       padding: 12px;
-      background: #f5f5f5;
-      border-radius: 8px;
-      margin-bottom: 12px;
+      text-align: center;
     }
-    
-    .toggle-label {
-      flex: 1;
-      margin-right: 12px;
-    }
-    
-    .toggle-label strong {
+
+    .stat-number {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
       display: block;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+      display: block;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+    }
+
+    .control-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .control-info strong {
+      display: block;
+      font-size: 13px;
       margin-bottom: 2px;
     }
-    
-    .toggle-label span {
-      font-size: 12px;
-      color: #666;
+
+    .control-info span {
+      font-size: 11px;
+      color: var(--text-sub);
     }
-    
+
+    /* Toggle Switch */
     .toggle-switch {
       position: relative;
-      width: 44px;
-      height: 24px;
-      flex-shrink: 0;
+      width: 40px;
+      height: 20px;
     }
-    
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .slider {
       position: absolute;
       cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: 0.3s;
-      border-radius: 24px;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #333;
+      transition: .3s;
+      border-radius: 20px;
     }
-    
     .slider:before {
       position: absolute;
       content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
+      height: 14px; width: 14px;
+      left: 3px; bottom: 3px;
       background-color: white;
-      transition: 0.3s;
+      transition: .3s;
       border-radius: 50%;
     }
-    
-    input:checked + .slider {
-      background-color: #4CAF50;
+    input:checked + .slider { background-color: var(--accent); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    .actions {
+      display: grid;
+      gap: 8px;
     }
-    
-    input:checked + .slider:before {
-      transform: translateX(20px);
-    }
-    
-    .stats {
-      padding: 8px 12px;
-      background: #e8f5e9;
-      border-radius: 6px;
-      font-size: 12px;
-      color: #2e7d32;
-    }
-    
-    .stats strong {
-      font-weight: 600;
-    }
-    
-    .action-button {
-      padding: 10px 16px;
-      border: none;
-      border-radius: 6px;
+
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: var(--radius);
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
-      transition: all 0.2s ease;
-      background: #4CAF50;
-      color: white;
-    }
-    
-    .action-button:hover {
-      background: #45a049;
-    }
-    
-    .action-button-secondary {
-      background: #2196F3;
-    }
-    
-    .action-button-secondary:hover {
-      background: #1976D2;
-    }
-    
-    .game-card {
-      display: flex;
-      flex-direction: column;
-      background: #ffffff;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      cursor: pointer;
-      transition: all 0.3s ease, opacity 0.3s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .game-card:hover {
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-      transform: translateY(-2px);
-    }
-    
-    .game-card-info {
-      padding: 16px;
-    }
-    
-    .game-card-id {
-      font-size: 12px;
-      color: #666;
-      font-family: monospace;
-    }
-    
-    .game-card-remove {
-      width: 100%;
-      background: #f44336;
-      color: white;
-      border: none;
-      padding: 12px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s ease;
-      border-top: 1px solid #e0e0e0;
-    }
-    
-    .game-card-remove:hover {
-      background: #d32f2f;
-    }
-    
-    body.dark-mode .game-card {
-      background: #2d2d2d;
-      border-color: #444;
-    }
-    
-    body.dark-mode .game-card:hover {
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    }
-    
-    body.dark-mode .game-card-remove {
-      border-top-color: #444;
-    }
-    
-    .empty-state {
+      transition: all 0.2s;
       text-align: center;
-      padding: 40px 20px;
-      color: #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
-    
-    .empty-state-icon {
-      font-size: 48px;
-      margin-bottom: 12px;
+
+    .btn:hover {
+      background: #222;
+      border-color: #555;
     }
-    
-    /* Modal styles */
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .btn.primary:hover { background: var(--accent-hover); }
+
+    /* Modals */
     .modal-overlay {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 1000;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 100;
+      backdrop-filter: blur(4px);
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(2px);
     }
-    
-    .modal-overlay.show {
-      display: flex;
-    }
-    
+    .modal-overlay.show { display: flex; }
+
     .modal {
-      background: white;
-      border-radius: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      width: 90%;
+      max-height: 80vh;
+      border-radius: var(--radius);
       padding: 20px;
-      max-width: 350px;
-      width: calc(100% - 40px);
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-      animation: modalSlideIn 0.3s ease;
-      margin: 20px;
-    }
-    
-    @keyframes modalSlideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    .modal-header {
-      margin-bottom: 16px;
-    }
-    
-    .modal-header h3 {
-      margin: 0 0 8px 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: #d32f2f;
-    }
-    
-    .modal-content {
-      margin-bottom: 20px;
-      line-height: 1.6;
-      color: #333;
-      font-size: 13px;
-    }
-    
-    .modal-content p {
-      margin: 0 0 10px 0;
-    }
-    
-    .modal-content p:last-of-type {
-      margin-bottom: 0;
-    }
-    
-    .modal-content ul {
-      margin: 8px 0 12px 0;
-      padding-left: 20px;
-    }
-    
-    .modal-content li {
-      margin: 4px 0;
-    }
-    
-    .modal-actions {
       display: flex;
-      gap: 12px;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .modal-header h3 { margin: 0; font-size: 16px; color: var(--accent); }
+
+    .modal-content {
+      overflow-y: auto;
+      flex: 1;
+      font-size: 13px;
+      color: #ccc;
+    }
+
+    .modal-actions {
+      margin-top: 16px;
+      display: flex;
       justify-content: flex-end;
+      gap: 8px;
     }
-    
-    .modal-button {
-      padding: 10px 20px;
+
+    /* Game/Item Cards */
+    .game-card {
+      background: #000;
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .game-card-info { padding: 10px; }
+    .game-card-remove {
+      width: 100%;
+      background: #222;
+      color: var(--accent);
       border: none;
-      border-radius: 6px;
+      padding: 8px;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all 0.2s ease;
+      border-top: 1px solid var(--border);
+      font-weight: 600;
     }
-    
-    .modal-button-cancel {
-      background: #f5f5f5;
-      color: #333;
+    .game-card-remove:hover { background: #333; }
+
+    .settings-link {
+      margin-top: 12px;
+      text-align: center;
     }
-    
-    .modal-button-cancel:hover {
-      background: #e0e0e0;
+    .settings-link button {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      cursor: pointer;
+      font-size: 12px;
+      text-decoration: underline;
     }
-    
-    .modal-button-confirm {
-      background: #4CAF50;
-      color: white;
-    }
-    
-    .modal-button-confirm:hover {
-      background: #45a049;
-    }
+    .settings-link button:hover { color: var(--text-main); }
+
   </style>
 </head>
-<body>
+<body class="dark-mode">
+
   <div class="header">
-    <h3>Roblox Blocker</h3>
-    <p>Control game recommendations</p>
-  </div>
-  
-  <div class="toggle-container">
-    <div class="toggle-label">
-      <strong>Show Block Icons</strong>
-      <span>Display prohibit icons on game cards</span>
+    <div class="header-title">
+      🚫 ZeroTolerance <span>Blocker</span>
     </div>
-    <label class="toggle-switch">
-      <input type="checkbox" id="toggleIcons">
-      <span class="slider"></span>
-    </label>
   </div>
-  
-  <div class="toggle-container" style="margin-top: 8px;">
-    <div class="toggle-label">
-      <strong>Enable Continue Section</strong>
-      <span>Also block games from recently played</span>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" id="toggleContinueSection">
-      <span class="slider"></span>
-    </label>
-  </div>
-  
-  <div class="stats" id="stats">
-    <strong id="blockedCount">0</strong> games blocked
-  </div>
-  
-  <div style="margin-top: 12px; display: flex; gap: 8px; flex-direction: column;">
-    <button id="viewBlockedBtn" class="action-button" style="width: 100%;">
-      📋 View Blocked Games
-    </button>
-    <button id="exportBtn" class="action-button action-button-secondary" style="width: 100%;">
-      💾 Export Blocklist
-    </button>
-    <button id="importBtn" class="action-button action-button-secondary" style="width: 100%;">
-      📥 Import Blocklist
-    </button>
-    <button id="settingsBtn" class="action-button action-button-secondary" style="width: 100%;">
-      ⚙️ Settings
-    </button>
-  </div>
-  
-  <!-- Blocked Games Browser Modal -->
-  <div class="modal-overlay" id="blockedGamesModal">
-    <div class="modal" style="max-width: 500px; max-height: 80vh;">
-      <div class="modal-header">
-        <h3>📋 Blocked Games</h3>
+
+  <div class="content">
+    
+    <div class="stats-container">
+      <div class="stat-card">
+        <span class="stat-number" id="blockedCount">0</span>
+        <span class="stat-label">Games Blocked</span>
       </div>
-      <div class="modal-content" id="blockedGamesList" style="max-height: 60vh; overflow-y: auto;">
-        <p style="text-align: center; color: #999;">Loading...</p>
+      <div class="stat-card">
+        <span class="stat-number" id="blockedCatalogCount">0</span>
+        <span class="stat-label">Items Blocked</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-item">
+        <div class="control-info">
+          <strong>Show Block Icons</strong>
+          <span>Display block buttons on cards</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleIcons">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="control-item">
+        <div class="control-info">
+          <strong>Continue Section</strong>
+          <span>Block recently played</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleContinueSection">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="viewBlockedBtn" class="btn">
+        📋 Manage Blocked Games
+      </button>
+      <button id="viewBlockedCatalogBtn" class="btn">
+        🛍️ Manage Blocked Items
+      </button>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+        <button id="exportBtn" class="btn">💾 Export</button>
+        <button id="importBtn" class="btn">📥 Import</button>
+      </div>
+    </div>
+
+    <div class="settings-link">
+      <button id="settingsBtn">Open Full Settings Dashboard</button>
+    </div>
+
+  </div>
+
+  <!-- Blocked Games Modal -->
+  <div class="modal-overlay" id="blockedGamesModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Blocked Games</h3>
+      </div>
+      <div class="modal-content" id="blockedGamesList">
+        <p style="text-align:center">Loading...</p>
       </div>
       <div class="modal-actions">
-        <button class="modal-button modal-button-cancel" id="closeBlockedModal">Close</button>
+        <button class="btn" id="closeBlockedModal">Close</button>
       </div>
     </div>
   </div>
-  
+
+  <!-- Blocked Catalog Items Modal -->
+  <div class="modal-overlay" id="blockedCatalogItemsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Blocked Items</h3>
+      </div>
+      <div class="modal-content" id="blockedCatalogItemsList">
+        <p style="text-align:center">Loading...</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="closeBlockedCatalogModal">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Import Modal -->
   <div class="modal-overlay" id="importModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>📥 Import Blocklist</h3>
+        <h3>Import Blocklist</h3>
       </div>
       <div class="modal-content">
-        <p>You have <strong id="existingBlockCount">0</strong> games currently blocked.</p>
-        <p>How would you like to handle the imported games?</p>
-        <div style="margin: 16px 0;">
-          <label style="display: flex; align-items: center; margin-bottom: 12px; cursor: pointer;">
-            <input type="radio" name="importMode" value="replace" checked style="margin-right: 8px;">
-            <span><strong>Replace</strong> - Remove all current blocks and use imported list</span>
+        <p>Current Blocks: <strong id="existingBlockCount">0</strong></p>
+        <div style="margin: 15px 0;">
+          <label style="display:block; margin-bottom:8px">
+            <input type="radio" name="importMode" value="replace" checked> 
+            Replace (Overwrite all)
           </label>
-          <label style="display: flex; align-items: center; cursor: pointer;">
-            <input type="radio" name="importMode" value="merge" style="margin-right: 8px;">
-            <span><strong>Merge</strong> - Combine with existing blocks</span>
+          <label style="display:block">
+            <input type="radio" name="importMode" value="merge"> 
+            Merge (Add to existing)
           </label>
         </div>
-        <input type="file" id="importFileInput" accept=".json" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-top: 12px;">
+        <input type="file" id="importFileInput" accept=".json" style="width:100%; margin-top:10px;">
       </div>
       <div class="modal-actions">
-        <button class="modal-button modal-button-cancel" id="cancelImport">Cancel</button>
-        <button class="modal-button modal-button-confirm" id="confirmImport" disabled>Import</button>
+        <button class="btn" id="cancelImport">Cancel</button>
+        <button class="btn primary" id="confirmImport" disabled>Import</button>
       </div>
     </div>
   </div>
-  
-  <!-- Modal for Continue Section Confirmation -->
+
+  <!-- Continue Warning Modal -->
   <div class="modal-overlay" id="continueModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>⚠️ Warning: Continue Section Blocking</h3>
+        <h3>⚠️ Warning</h3>
       </div>
       <div class="modal-content">
-        <p>This feature allows you to block games from your <strong>"Continue"</strong> section (recently played games).</p>
-        <p><strong>Please confirm that you will NOT use this feature to:</strong></p>
-        <ul>
-          <li>Hide inappropriate games you have recently played</li>
-          <li>Hide shameful or embarrassing games from your history</li>
-          <li>Conceal your activity from others</li>
-        </ul>
-        <p>This tool is intended for <strong>managing recommendations</strong>, not for hiding your activity history.</p>
+        <p>You are enabling blocking for the "Continue" (Recently Played) section.</p>
+        <p style="color: var(--accent);">This tool is for managing recommendations, NOT for hiding your activity history.</p>
       </div>
       <div class="modal-actions">
-        <button class="modal-button modal-button-cancel" id="modalCancel">Cancel</button>
-        <button class="modal-button modal-button-confirm" id="modalConfirm">I Understand, Enable</button>
+        <button class="btn" id="modalCancel">Cancel</button>
+        <button class="btn primary" id="modalConfirm">Enable</button>
       </div>
     </div>
   </div>
-  
+
   <script src="popup.js"></script>
 </body>
 </html>
-
