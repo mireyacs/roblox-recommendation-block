@@ -113,6 +113,7 @@
         });
       }
       sendResponse({ success: true });
+      return true; // Keep channel open for async
     } else if (request.action === 'refreshBlocklist') {
       // Reload blocked games and update visibility
       log('Refreshing blocklist...');
@@ -1111,32 +1112,51 @@
 
   // Check if a card is a Continue card (recently played)
   function isContinueCard(card) {
+    // Don't treat charts section cards as continue cards
+    // Charts section is at /charts URL
+    if (window.location.pathname === '/charts' || window.location.pathname.startsWith('/charts/')) {
+      return false;
+    }
+    
     // Continue cards have this structure: <li class="list-item game-card game-tile">
     // with <div class="game-card-container" data-testid="game-tile">
+    // BUT only if they're in the Continue section (not charts)
     const isContinueStructure = 
       card.classList.contains('game-card') && 
       card.classList.contains('game-tile') &&
       card.querySelector('.game-card-container[data-testid="game-tile"]');
     
     if (isContinueStructure) {
-      return true;
-    }
-    
-    // Also check if it's in a Continue section by looking for nearby headings
-    let current = card;
-    for (let i = 0; i < 5 && current; i++) {
-      const text = current.textContent || '';
-      if (text.toLowerCase().includes('continue') && text.length < 100) {
+      // Check if it's actually in a Continue section by looking for nearby headings
+      let current = card;
+      for (let i = 0; i < 10 && current; i++) {
+        const text = current.textContent || '';
+        // Look for "Continue" heading or section identifier
+        if (text.toLowerCase().includes('continue') && text.length < 100) {
+          return true;
+        }
+        // Check for Continue section container
+        if (current.id && current.id.toLowerCase().includes('continue')) {
+          return true;
+        }
+        current = current.parentElement;
+      }
+      // If we're on the home page and it has this structure, it's likely a continue card
+      if (window.location.pathname === '/' || window.location.pathname === '/home') {
         return true;
       }
-      current = current.parentElement;
     }
     
     return false;
   }
   
-  // Check if a card is in the Recommended section
+  // Check if a card is in the Recommended section or Charts section
   function isRecommendedCard(card) {
+    // Charts section cards should always be processed
+    if (window.location.pathname === '/charts' || window.location.pathname.startsWith('/charts/')) {
+      return true;
+    }
+    
     // Check if card is within home-page-game-grid
     const recommendedSection = document.querySelector('[data-testid="home-page-game-grid"]');
     if (recommendedSection && recommendedSection.contains(card)) {
@@ -1165,7 +1185,8 @@
       '.hover-game-tile, ' +
       '.grid-tile, ' +
       'li[class*="tile"], ' +
-      'li.game-card'
+      'li.game-card, ' +
+      'li.list-item.game-card.game-tile'
     ));
     
     log(`Found ${allGameCards.length} total game cards on page`);

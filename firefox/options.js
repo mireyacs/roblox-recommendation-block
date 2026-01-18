@@ -747,9 +747,29 @@ function showContinueSectionConfirmation(callback) {
   modal.addEventListener('click', handleOverlayClick);
 }
 
-// Setup event listeners
+// Setup event listeners (only once)
+let eventListenersSetup = false;
 function setupEventListeners() {
-  document.getElementById('toggleIcons').addEventListener('change', async (e) => {
+  // Only set up once to avoid duplicate listeners
+  if (eventListenersSetup) {
+    return;
+  }
+  eventListenersSetup = true;
+  
+  // Remove old listeners by cloning and replacing elements
+  // Preserve checked state when cloning
+  const toggleIcons = document.getElementById('toggleIcons');
+  const toggleContinue = document.getElementById('toggleContinueSection');
+  const iconsChecked = toggleIcons.checked;
+  const continueChecked = toggleContinue.checked;
+  const newToggleIcons = toggleIcons.cloneNode(true);
+  const newToggleContinue = toggleContinue.cloneNode(true);
+  newToggleIcons.checked = iconsChecked;
+  newToggleContinue.checked = continueChecked;
+  toggleIcons.parentNode.replaceChild(newToggleIcons, toggleIcons);
+  toggleContinue.parentNode.replaceChild(newToggleContinue, toggleContinue);
+  
+  newToggleIcons.addEventListener('change', async (e) => {
     await browserAPI.storage.local.set({ [TOGGLE_KEY]: e.target.checked });
     document.getElementById('iconsStatus').textContent = e.target.checked ? 'Yes' : 'No';
     
@@ -762,7 +782,7 @@ function setupEventListeners() {
     });
   });
   
-  document.getElementById('toggleContinueSection').addEventListener('change', async (e) => {
+  newToggleContinue.addEventListener('change', async (e) => {
     const wantsToEnable = e.target.checked;
     const currentState = document.getElementById('continueStatus').textContent === 'Enabled';
     

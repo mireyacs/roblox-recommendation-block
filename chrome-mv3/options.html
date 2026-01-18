@@ -214,11 +214,14 @@
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.8);
       z-index: 1000;
+      background: rgba(0,0,0,0.8);
       backdrop-filter: blur(5px);
       align-items: center;
       justify-content: center;
+    }
+    .modal-overlay.show {
+      display: flex !important;
     }
     .modal {
       background: var(--card-bg);
