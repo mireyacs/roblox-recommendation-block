@@ -427,21 +427,29 @@
     return null;
   }
 
-  // Get catalog item ID from a catalog item element
+  // Get catalog item ID from a catalog item element (handles both /catalog/ and /bundles/ URLs)
   function getCatalogItemId(element) {
-    // Strategy 1: Find catalog link and extract ID from URL (most reliable)
-    // URL format: /catalog/{id}/{name}
-    let link = element.querySelector('a[href*="/catalog/"]');
+    // Strategy 1: Find catalog/bundle link and extract ID from URL (most reliable)
+    // URL formats: /catalog/{id}/{name} or /bundles/{id}/{name}
+    let link = element.querySelector('a[href*="/catalog/"], a[href*="/bundles/"]');
     if (!link && element.tagName === 'A' && element.href) {
-      link = element;
+      if (element.href.includes('/catalog/') || element.href.includes('/bundles/')) {
+        link = element;
+      }
     }
     
     if (link && link.href) {
-      // Extract catalog ID from URL path: /catalog/{id}/{name}
-      const match = link.href.match(/\/catalog\/(\d+)/);
-      if (match) {
-        log(`Found catalogId from URL: ${match[1]}`);
-        return { catalogId: match[1], source: 'url' };
+      // Extract catalog/bundle ID from URL path
+      const catalogMatch = link.href.match(/\/catalog\/(\d+)/);
+      const bundleMatch = link.href.match(/\/bundles\/(\d+)/);
+      
+      if (catalogMatch) {
+        log(`Found catalogId from catalog URL: ${catalogMatch[1]}`);
+        return { catalogId: catalogMatch[1], source: 'url' };
+      }
+      if (bundleMatch) {
+        log(`Found catalogId from bundle URL: ${bundleMatch[1]}`);
+        return { catalogId: bundleMatch[1], source: 'url' };
       }
     }
     
@@ -472,10 +480,16 @@
     let current = element.parentElement;
     for (let i = 0; i < 5 && current; i++) {
       if (current.tagName === 'A' && current.href) {
-        const match = current.href.match(/\/catalog\/(\d+)/);
-        if (match) {
-          log(`Found catalogId from parent link: ${match[1]}`);
-          return { catalogId: match[1], source: 'parentLink' };
+        const catalogMatch = current.href.match(/\/catalog\/(\d+)/);
+        const bundleMatch = current.href.match(/\/bundles\/(\d+)/);
+        
+        if (catalogMatch) {
+          log(`Found catalogId from parent catalog link: ${catalogMatch[1]}`);
+          return { catalogId: catalogMatch[1], source: 'parentLink' };
+        }
+        if (bundleMatch) {
+          log(`Found catalogId from parent bundle link: ${bundleMatch[1]}`);
+          return { catalogId: bundleMatch[1], source: 'parentLink' };
         }
       }
       current = current.parentElement;
@@ -881,7 +895,8 @@
       '.item-card-container',
       'div[class*="catalog-item"]',
       'div[class*="item-card"]',
-      'a[href*="/catalog/"]'
+      'a[href*="/catalog/"]',
+      'a[href*="/bundles/"]'
     ];
     
     for (const selector of catalogSelectors) {
@@ -892,7 +907,7 @@
         
         // For links, find the parent container
         let container = card;
-        if (card.tagName === 'A' && card.href && card.href.includes('/catalog/')) {
+        if (card.tagName === 'A' && card.href && (card.href.includes('/catalog/') || card.href.includes('/bundles/'))) {
           container = card.closest('.catalog-item-container, .item-card-container') || card.parentElement;
         }
         
@@ -920,8 +935,8 @@
       catalogCards = Array.from(document.querySelectorAll('.item-card-container'));
     }
     
-    // Also check for any links to catalog items
-    const catalogLinks = Array.from(document.querySelectorAll('a[href*="/catalog/"]'));
+    // Also check for any links to catalog items and bundles
+    const catalogLinks = Array.from(document.querySelectorAll('a[href*="/catalog/"], a[href*="/bundles/"]'));
     catalogLinks.forEach(link => {
       const container = link.closest('.catalog-item-container, .item-card-container');
       if (container && !catalogCards.includes(container)) {
@@ -933,17 +948,17 @@
     
     // Filter to only cards that have the expected structure
     const validCards = catalogCards.filter(card => {
-      // Check if card has catalog link - search more deeply
-      let hasCatalogLink = card.querySelector('a[href*="/catalog/"]');
+      // Check if card has catalog/bundle link - search more deeply
+      let hasCatalogLink = card.querySelector('a[href*="/catalog/"], a[href*="/bundles/"]');
       if (!hasCatalogLink) {
         // Check if the card itself is a link
-        if (card.tagName === 'A' && card.href && card.href.includes('/catalog/')) {
+        if (card.tagName === 'A' && card.href && (card.href.includes('/catalog/') || card.href.includes('/bundles/'))) {
           hasCatalogLink = card;
         } else {
-          // Check nested elements more thoroughly - look for any link with /catalog/ in href
+          // Check nested elements more thoroughly - look for any link with /catalog/ or /bundles/ in href
           const allLinks = card.querySelectorAll('a');
           for (const link of allLinks) {
-            if (link.href && link.href.includes('/catalog/')) {
+            if (link.href && (link.href.includes('/catalog/') || link.href.includes('/bundles/'))) {
               hasCatalogLink = link;
               break;
             }
@@ -999,9 +1014,11 @@
     let itemInfo = getCatalogItemId(card);
     if (!itemInfo) {
       // Try to get catalog ID from the card link one more time
-      const cardLink = card.closest('a[href*="/catalog/"]') || card.querySelector('a[href*="/catalog/"]');
+      const cardLink = card.closest('a[href*="/catalog/"], a[href*="/bundles/"]') || card.querySelector('a[href*="/catalog/"], a[href*="/bundles/"]');
       if (cardLink && cardLink.href) {
-        const match = cardLink.href.match(/\/catalog\/(\d+)/);
+        const catalogMatch = cardLink.href.match(/\/catalog\/(\d+)/);
+        const bundleMatch = cardLink.href.match(/\/bundles\/(\d+)/);
+        const match = catalogMatch || bundleMatch;
         if (match) {
           const catalogId = match[1];
           card.setAttribute('data-roblox-blocker-catalog-id', catalogId);
@@ -1379,6 +1396,25 @@
       showGamePageBlockOverlay(catalogId, itemName, 'catalog');
       return;
     }
+    
+    // Check if we're on a bundle page (URL pattern: /bundles/123456/name)
+    const bundlePageMatch = window.location.pathname.match(/^\/bundles\/(\d+)/);
+    if (bundlePageMatch) {
+      const catalogId = bundlePageMatch[1];
+      
+      // Check if this bundle is blocked
+      if (!blockedCatalogIds.has(catalogId)) {
+        return;
+      }
+      
+      // Get catalog item info
+      const itemInfo = blockedCatalogItems.get(catalogId);
+      const itemName = itemInfo?.name || `Bundle ${catalogId}`;
+      
+      // Show blocking overlay
+      showGamePageBlockOverlay(catalogId, itemName, 'catalog');
+      return;
+    }
   }
 
   // Show overlay blocking the game or catalog page
@@ -1628,7 +1664,7 @@
             if (node.nodeType === 1) { // Element node
               if (node.querySelector) {
                 const hasGameLink = node.querySelector('a[href*="/games/"]');
-                const hasCatalogLink = node.querySelector('a[href*="/catalog/"]');
+                const hasCatalogLink = node.querySelector('a[href*="/catalog/"], a[href*="/bundles/"]');
                 const hasCatalogItem = node.classList?.contains('catalog-item-container') ||
                                       node.classList?.contains('item-card-container') ||
                                       node.querySelector('.catalog-item-container') ||
