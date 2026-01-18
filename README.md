@@ -238,14 +238,17 @@ The extension stores:
 
 ### Extension Popup
 ![Extension Popup](popup.png)
+
 *Modern dark-themed popup with statistics and quick controls*
 
 ### Settings Dashboard
 ![Settings Dashboard](settings-dashboard.png)
+
 *Full-featured dashboard with grid layout and comprehensive management tools*
 
 ### Block Overlay
 ![Block Overlay](block-overlay.png)
+
 *Warning overlay when accessing blocked games or items directly*
 
 </div>
