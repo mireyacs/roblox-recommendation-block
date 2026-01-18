@@ -112,8 +112,8 @@
     } else if (request.action === 'refreshBlocklist') {
       // Reload blocked games and update visibility
       log('Refreshing blocklist...');
-      loadBlockedGames().then(() => {
-        hideBlockedGames();
+      loadBlockedGames().then(async () => {
+        await hideBlockedGames();
         sendResponse({ success: true });
       });
       return true; // Keep channel open for async
@@ -405,11 +405,76 @@
   }
 
 
-  // Block a game
-  async function blockGame(gameId, gameCard) {
-    if (!gameId) return;
+  // Convert universeId to placeId and fetch game name
+  async function convertUniverseIdToPlaceId(universeId) {
+    if (!universeId) return null;
     
-    blockedGameIds.add(gameId);
+    try {
+      const response = await proxyFetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        const game = data.data[0];
+        return {
+          placeId: game.rootPlaceId.toString(),
+          name: game.name,
+          universeId: game.id.toString()
+        };
+      }
+    } catch (error) {
+      log(`Error converting universeId ${universeId} to placeId:`, error);
+    }
+    
+    return null;
+  }
+
+  // Block a game
+  async function blockGame(gameInfo, gameCard) {
+    if (!gameInfo) return;
+    
+    // Handle both object and string formats for backward compatibility
+    let placeId = null;
+    let name = null;
+    let universeId = null;
+    
+    if (typeof gameInfo === 'string') {
+      // Old format: just a placeId string
+      placeId = gameInfo;
+    } else if (typeof gameInfo === 'object') {
+      // New format: object with placeId, universeId, name
+      placeId = gameInfo.placeId;
+      universeId = gameInfo.universeId;
+      name = gameInfo.name;
+      
+      // If we have universeId but not placeId, convert it
+      if (universeId && !placeId) {
+        const converted = await convertUniverseIdToPlaceId(universeId);
+        if (converted) {
+          placeId = converted.placeId;
+          name = converted.name || name;
+          universeId = converted.universeId || universeId;
+        } else {
+          log(`Failed to convert universeId ${universeId} to placeId`);
+          return;
+        }
+      }
+    }
+    
+    if (!placeId) {
+      log('Cannot block game: no placeId available');
+      return;
+    }
+    
+    // Store game info in the new format
+    const gameData = {
+      placeId: placeId,
+      name: name || null,
+      universeId: universeId || null
+    };
+    
+    blockedGames.set(placeId, gameData);
+    blockedGameIds.add(placeId);
+    
     await saveBlockedGames();
     
     // Hide the game card with a fade-out animation
@@ -423,18 +488,30 @@
       }, 300);
     }
     
-    log(`Blocked game: ${gameId}`);
+    log(`Blocked game: ${placeId}${name ? ` (${name})` : ''}`);
+    
+    // Notify all Roblox tabs to refresh
+    try {
+      const tabs = await browserAPI.tabs.query({ url: 'https://www.roblox.com/*' });
+      tabs.forEach(tab => {
+        browserAPI.tabs.sendMessage(tab.id, { action: 'refreshBlocklist' }).catch(() => {
+          // Ignore errors (tab might not have content script loaded)
+        });
+      });
+    } catch (error) {
+      log('Error notifying tabs:', error);
+    }
   }
 
   // Check if game is blocked and hide it
-  function hideBlockedGames() {
+  async function hideBlockedGames() {
     // Check stored IDs on cards first (faster)
     const cardsWithId = document.querySelectorAll('[data-roblox-blocker-id]');
     cardsWithId.forEach(card => {
-      const gameId = card.getAttribute('data-roblox-blocker-id');
-      if (gameId && blockedGameIds.has(gameId)) {
+      const placeId = card.getAttribute('data-roblox-blocker-id');
+      if (placeId && blockedGameIds.has(placeId)) {
         card.style.display = 'none';
-        log(`Hiding blocked game: ${gameId}`);
+        log(`Hiding blocked game: ${placeId}`);
       }
     });
     
@@ -448,20 +525,56 @@
       'li[class*="tile"]'
     ];
     
-    gameCardSelectors.forEach(selector => {
+    for (const selector of gameCardSelectors) {
       const cards = document.querySelectorAll(selector);
-      cards.forEach(card => {
-        // Skip if already processed
-        if (card.hasAttribute('data-roblox-blocker-id')) return;
+      for (const card of cards) {
+        // Skip if already processed or hidden
+        if (card.hasAttribute('data-roblox-blocker-id') || card.style.display === 'none') continue;
         
-        const gameId = getGameId(card);
-        if (gameId && blockedGameIds.has(gameId)) {
-          card.style.display = 'none';
-          card.setAttribute('data-roblox-blocker-id', gameId);
-          log(`Hiding blocked game (found by selector): ${gameId}`);
+        const gameInfo = getGameId(card);
+        if (!gameInfo) continue;
+        
+        let placeId = gameInfo.placeId;
+        
+        // If we have universeId but not placeId, try to convert it
+        if (gameInfo.universeId && !placeId) {
+          // First check if we already have this universeId in our blocked games
+          let found = false;
+          for (const [blockedPlaceId, game] of blockedGames) {
+            if (game.universeId === gameInfo.universeId) {
+              placeId = blockedPlaceId;
+              found = true;
+              break;
+            }
+          }
+          
+          // If not found, try to convert (but don't block on this)
+          if (!found) {
+            const converted = await convertUniverseIdToPlaceId(gameInfo.universeId);
+            if (converted) {
+              placeId = converted.placeId;
+            }
+          }
         }
-      });
-    });
+        
+        // Check if this placeId is blocked
+        if (placeId && blockedGameIds.has(placeId)) {
+          card.style.display = 'none';
+          card.setAttribute('data-roblox-blocker-id', placeId);
+          log(`Hiding blocked game (found by selector): ${placeId}`);
+        } else if (gameInfo.universeId) {
+          // Also check by universeId
+          for (const [blockedPlaceId, game] of blockedGames) {
+            if (game.universeId === gameInfo.universeId) {
+              card.style.display = 'none';
+              card.setAttribute('data-roblox-blocker-id', blockedPlaceId);
+              log(`Hiding blocked game by universeId (found by selector): ${gameInfo.universeId} -> ${blockedPlaceId}`);
+              break;
+            }
+          }
+        }
+      }
+    }
   }
 
   // Check if a card is a Continue card (recently played)
@@ -712,9 +825,9 @@
     log(`Loaded ${blockedGameIds.size} blocked games`);
     
     // Wait a bit for page to fully load
-    setTimeout(() => {
+    setTimeout(async () => {
       // Initial processing
-      hideBlockedGames();
+      await hideBlockedGames();
       if (showIcons) {
         addHamburgerButtons().catch(err => {
           log('Error adding buttons:', err);
@@ -743,7 +856,9 @@
       
       if (shouldUpdate) {
         log('New content detected, updating...');
-        hideBlockedGames();
+        hideBlockedGames().catch(err => {
+          log('Error hiding blocked games:', err);
+        });
         if (showIcons) {
           addHamburgerButtons().catch(err => {
             log('Error adding buttons:', err);
@@ -759,7 +874,9 @@
     
     // Also check periodically for lazy-loaded content
     setInterval(() => {
-      hideBlockedGames();
+      hideBlockedGames().catch(err => {
+        log('Error hiding blocked games:', err);
+      });
       if (showIcons) {
         addHamburgerButtons().catch(err => {
           log('Error adding buttons:', err);
